@@ -7,18 +7,33 @@
 from quackhunt.engine import (
     Game,
     EngineConfig,
+    Node,
     RectNode,
     Vec2,
     run_game,
 )
 
-import pygame
+
+class MovingRect(Node):
+    velocity = Vec2(400, 0)
+
+    def __init__(self):
+        super().__init__(position=Vec2(100, 100))
+
+        self.add_child(
+            RectNode('rect', Vec2(0, 0), Vec2(100, 100), 0xFF00FF).add_child(
+                RectNode('sub', Vec2(0, 0), Vec2(50, 50), 0x00FF00),
+            )
+        )
+
+    def update(self, game: Game) -> None:
+        self.position += self.velocity * game.dt
+
+        if self.position[0] > game.engine.screen_surface.get_width():
+            self.position[0] = -self.size.x / 2
 
 
 class QuackHunt(Game):
-    position = [-50, 300]
-    velocity = [200, 0]
-
     def get_config(self) -> EngineConfig:
         return EngineConfig(
             title='Quack Hunt',
@@ -29,19 +44,8 @@ class QuackHunt(Game):
 
     def on_start(self) -> None:
         self.scene_graph.add_child(
-            RectNode('rect', Vec2(100, 100), Vec2(100, 100), 0xFF00FF).add_child(
-                RectNode('sub', Vec2(0, 0), Vec2(50, 50), 0x00FF00),
-            ),
+            MovingRect()
         )
-
-    def overdraw(self, screen: pygame.Surface) -> None:
-        self.position[0] += self.velocity[0] * self.dt
-        self.position[1] += self.velocity[1] * self.dt
-
-        if self.position[0] > screen.get_width():
-            self.position[0] = -50
-
-        pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(self.position[0], self.position[1], 50, 50))
 
 
 def run():
