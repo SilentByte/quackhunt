@@ -6,7 +6,7 @@
 from dataclasses import dataclass
 from typing import List
 
-import pygame
+import pygame as pyg
 
 
 def _global_id() -> int:
@@ -26,7 +26,7 @@ class EngineConfig:
     clear_color: int = 0x111111
 
 
-Vec2 = pygame.Vector2
+Vec2 = pyg.Vector2
 SimpleRect = tuple[int | float, int | float, int | float, int | float]
 
 
@@ -62,7 +62,7 @@ class Node:
     def update(self, game: 'Game') -> None:
         pass
 
-    def draw(self, surface: pygame.Surface, offset: Vec2) -> None:
+    def draw(self, surface: pyg.Surface, offset: Vec2) -> None:
         pass
 
     def __str__(self):
@@ -82,8 +82,8 @@ class RectNode(Node):
         super().__init__(name, position, size)
         self.color = color
 
-    def draw(self, surface: pygame.Surface, offset: Vec2) -> None:
-        pygame.draw.rect(surface, self.color, self.get_adjusted_rect(offset))
+    def draw(self, surface: pyg.Surface, offset: Vec2) -> None:
+        pyg.draw.rect(surface, self.color, self.get_adjusted_rect(offset))
 
 
 class SceneGraph:
@@ -107,7 +107,7 @@ class SceneGraph:
 
         update_inner(self.root_node)
 
-    def draw(self, surface: pygame.Surface) -> None:
+    def draw(self, surface: pyg.Surface) -> None:
         def draw_inner(node: Node, offset: Vec2) -> None:
             node.draw(surface, offset)
             for child_node in node.children:
@@ -118,6 +118,7 @@ class SceneGraph:
 
 # noinspection PyMethodMayBeStatic
 class Game:
+    pyg = pyg
     engine: '_Engine'
     scene_graph: SceneGraph
     dt: float
@@ -137,7 +138,7 @@ class Game:
     def on_stop(self) -> None:
         pass
 
-    def overdraw(self, screen: pygame.display) -> None:
+    def overdraw(self, screen: pyg.Surface) -> None:
         """
         Mainly useful for quick debug rendering.
         """
@@ -146,18 +147,18 @@ class Game:
 
 # noinspection PyMethodMayBeStatic
 class _Engine:
-    screen_surface: pygame.Surface
-    clock: pygame.time.Clock
+    screen_surface: pyg.Surface
+    clock: pyg.time.Clock
     target_fps: int
     clear_color: int
     scene_graph: SceneGraph
 
     def __init__(self, config: EngineConfig):
-        pygame.init()
-        pygame.mixer.init()
+        pyg.init()
+        pyg.mixer.init()
 
-        self.screen_surface = pygame.display.set_mode((config.width, config.height), pygame.RESIZABLE | pygame.SCALED)
-        self.clock = pygame.time.Clock()
+        self.screen_surface = pyg.display.set_mode((config.width, config.height), pyg.RESIZABLE | pyg.SCALED)
+        self.clock = pyg.time.Clock()
         self.target_fps = config.target_fps
         self.clear_color = config.clear_color
         self.scene_graph = SceneGraph()
@@ -165,10 +166,10 @@ class _Engine:
         self.set_title(config.title)
 
     def _shutdown(self) -> None:
-        pygame.quit()
+        pyg.quit()
 
     def set_title(self, title: str) -> None:
-        pygame.display.set_caption(title)
+        pyg.display.set_caption(title)
 
     def get_fps(self) -> float:
         return self.clock.get_fps()
@@ -177,13 +178,14 @@ class _Engine:
         return 1.0 / self.clock.get_fps()
 
     def _handle_events(self) -> bool:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+        for event in pyg.event.get():
+            if event.type == pyg.QUIT:
                 return False
 
         return True
 
     def run(self, game: Game) -> None:
+        game.pyg = pyg
         game.engine = self
         game.scene_graph = self.scene_graph
         game.on_start()
@@ -203,7 +205,7 @@ class _Engine:
 
             game.overdraw(self.screen_surface)
 
-            pygame.display.flip()
+            pyg.display.flip()
 
 
 def run_game(game: Game) -> None:

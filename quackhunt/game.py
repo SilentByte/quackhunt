@@ -27,7 +27,13 @@ class MovingRect(Node):
         )
 
     def update(self, game: Game) -> None:
-        self.position += self.velocity * game.dt
+        keys = game.pyg.key.get_pressed()
+
+        if keys[game.pyg.K_LEFT]:
+            self.position += -self.velocity * game.dt
+
+        if keys[game.pyg.K_RIGHT]:
+            self.position += self.velocity * game.dt
 
         if self.position[0] > game.engine.screen_surface.get_width():
             self.position[0] = -self.size.x / 2
