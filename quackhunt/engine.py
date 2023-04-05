@@ -3,8 +3,9 @@
 # Copyright (c) 2023 SilentByte <https://silentbyte.com/>
 #
 
-
+from collections import OrderedDict
 from dataclasses import dataclass
+from typing import List, Any
 
 import pygame
 
@@ -18,8 +19,79 @@ class EngineConfig:
     clear_color: int = 0x111111
 
 
+NodeDict = OrderedDict
+
+Vec2 = pygame.Vector2
+SimpleRect = tuple[int | float, int | float, int | float, int | float]
+
+
+class Node:
+    name: str
+    children: NodeDict[str, 'Node']
+    position: Vec2
+    size: Vec2
+
+    def __init__(self, name: str, position: Vec2 = Vec2(), size: Vec2 = Vec2()):
+        self.name = name
+        self.children = NodeDict()
+        self.position = position
+
+    def add_child(self, *nodes: 'Node') -> 'Node':
+        for node in nodes:
+            self.children[node.name] = node
+
+        return self
+
+    def get_adjusted_rect(self, offset: Vec2) -> SimpleRect:
+        return (
+            self.position.x - self.size.x / 2 + offset.x,
+            self.position.y - self.size.y / 2+offset.y,
+            self.size.x,
+            self.size.y,
+        )
+
+    def draw(self, surface: pygame.Surface, offset: Vec2) -> None:
+        pass
+
+
+class RectNode(Node):
+    color: int
+
+    def __init__(
+            self,
+            name: str,
+            position: Vec2,
+            size: Vec2,
+            color: int = 0xFFFFFF,
+    ):
+        super().__init__(name, position)
+
+        self.size = size
+        self.color = color
+
+    def draw(self, surface: pygame.Surface, offset: Vec2) -> None:
+        pygame.draw.rect(surface, self.color, self.get_adjusted_rect(offset))
+
+
 class SceneGraph:
-    pass
+    root_node: Node
+
+    def __init__(self):
+        self.root_node = Node('root')
+
+    def add_child(self, *nodes: Node) -> 'Node':
+        for node in nodes:
+            self.root_node.add_child(node)
+
+        return self.root_node
+
+    def draw(self, surface: pygame.Surface) -> None:
+        def draw_inner(node: Node, offset: Vec2) -> None:
+            node.draw(surface, offset)
+            for child_node in node.children.values():
+                draw_inner(child_node, node.position)
+
+        draw_inner(self.root_node, self.root_node.position)
 
 
 # noinspection PyMethodMayBeStatic
@@ -52,7 +124,7 @@ class Game:
 
 # noinspection PyMethodMayBeStatic
 class _Engine:
-    _screen: pygame.Surface
+    _screen_surface: pygame.Surface
     _clock: pygame.time.Clock
     _target_fps: int
     _clear_color: int
@@ -62,7 +134,7 @@ class _Engine:
         pygame.init()
         pygame.mixer.init()
 
-        self._screen = pygame.display.set_mode((config.width, config.height), pygame.RESIZABLE | pygame.SCALED)
+        self._screen_surface = pygame.display.set_mode((config.width, config.height), pygame.RESIZABLE | pygame.SCALED)
         self._clock = pygame.time.Clock()
         self._target_fps = config.target_fps
         self._clear_color = config.clear_color
@@ -101,10 +173,11 @@ class _Engine:
 
             game.dt = self._clock.tick(self._target_fps) / 1000.0
 
-            self._screen.fill(self._clear_color)
+            self._screen_surface.fill(self._clear_color)
 
-            # TODO: Render Scene Graph.
-            game.overdraw(self._screen)
+            self._scene_graph.draw(self._screen_surface)
+
+            game.overdraw(self._screen_surface)
 
             pygame.display.flip()
 
