@@ -3,7 +3,6 @@
 # Copyright (c) 2023 SilentByte <https://silentbyte.com/>
 #
 
-
 from quackhunt.engine import (
     Game,
     EngineConfig,

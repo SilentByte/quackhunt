@@ -3,10 +3,13 @@
 # Copyright (c) 2023 SilentByte <https://silentbyte.com/>
 #
 
+from time import time
 from dataclasses import dataclass
 from typing import List
 
 import pygame as pyg
+
+from quackhunt import utils
 
 
 def _global_id() -> int:
@@ -138,10 +141,10 @@ class Game:
     def on_stop(self) -> None:
         pass
 
-    def overdraw(self, screen: pyg.Surface) -> None:
-        """
-        Mainly useful for quick debug rendering.
-        """
+    def on_frame_start(self) -> None:
+        pass
+
+    def on_frame_end(self) -> None:
         pass
 
 
@@ -152,6 +155,8 @@ class _Engine:
     target_fps: int
     clear_color: int
     scene_graph: SceneGraph
+    frame_counter: int
+    start_time: float
 
     def __init__(self, config: EngineConfig):
         pyg.init()
@@ -162,6 +167,9 @@ class _Engine:
         self.target_fps = config.target_fps
         self.clear_color = config.clear_color
         self.scene_graph = SceneGraph()
+        self.fps = 0.0
+        self.frame_counter = 0
+        self.start_time = 0
 
         self.set_title(config.title)
 
@@ -171,11 +179,11 @@ class _Engine:
     def set_title(self, title: str) -> None:
         pyg.display.set_caption(title)
 
-    def get_fps(self) -> float:
-        return self.clock.get_fps()
+    def get_time(self) -> float:
+        return time() - self.start_time
 
-    def get_spf(self) -> float:
-        return 1.0 / self.clock.get_fps()
+    def log(self, object) -> None:
+        utils.debug_print(object, f'{self.frame_counter}   {self.get_time():.2f}   {self.clock.get_fps():.0f}  ')
 
     def _handle_events(self) -> bool:
         for event in pyg.event.get():
@@ -185,12 +193,16 @@ class _Engine:
         return True
 
     def run(self, game: Game) -> None:
+        self.start_time = time()
+
         game.pyg = pyg
         game.engine = self
         game.scene_graph = self.scene_graph
         game.on_start()
 
         while True:
+            self.frame_counter += 1
+
             if not self._handle_events():
                 game.on_stop()
                 self._shutdown()
@@ -200,10 +212,10 @@ class _Engine:
 
             self.screen_surface.fill(self.clear_color)
 
+            game.on_frame_start()
             self.scene_graph.update(game)
             self.scene_graph.draw(self.screen_surface)
-
-            game.overdraw(self.screen_surface)
+            game.on_frame_end()
 
             pyg.display.flip()
 
