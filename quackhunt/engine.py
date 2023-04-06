@@ -5,7 +5,7 @@
 
 from time import time
 from dataclasses import dataclass
-from typing import List
+from typing import List, Any, Union
 
 import pygame as pyg
 
@@ -27,6 +27,7 @@ class EngineConfig:
     height: int = 1080
     target_fps: int = 60
     clear_color: int = 0x111111
+    sound_channels: int = 64
 
 
 Vec2 = pyg.Vector2
@@ -53,6 +54,22 @@ class Node:
     def add_child(self, *nodes: 'Node') -> 'Node':
         self.children.extend(nodes)
         return self
+
+    def find_child(self, name: str) -> Union['Node', Any]:
+        def find_direct_child(node: Node, child_name: str):
+            for child_node in node.children:
+                if child_node.name == child_name:
+                    return child_node
+
+            return None
+
+        current_node = self
+        for name_segment in name.split('/'):
+            current_node = find_direct_child(current_node, name_segment)
+            if current_node is None:
+                raise ValueError(f'Node {name} is not a child of {self.name}')
+
+        return current_node
 
     def get_adjusted_rect(self, offset: Vec2) -> SimpleRect:
         return (
@@ -103,6 +120,22 @@ class SpriteNode(Node):
 
     def draw(self, surface: pyg.Surface, offset: Vec2) -> None:
         surface.blit(self.texture, self.get_adjusted_rect(offset))
+
+
+class SoundNode(Node):
+    sound: pyg.mixer.Sound
+
+    def __init__(
+            self,
+            filename: str,
+            name: str = '',
+    ):
+        self.sound = pyg.mixer.Sound(filename)
+        super().__init__(name)
+
+    def play(self) -> None:
+        channel = pyg.mixer.find_channel(True)
+        channel.play(self.sound)
 
 
 class SceneGraph:
@@ -186,6 +219,8 @@ class _Engine:
         self.fps = 0.0
         self.frame_counter = 0
         self.start_time = 0
+
+        pyg.mixer.set_num_channels(config.sound_channels)
 
         self.set_title(config.title)
 

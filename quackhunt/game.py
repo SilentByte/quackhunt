@@ -9,13 +9,14 @@ from quackhunt.engine import (
     Node,
     RectNode,
     SpriteNode,
+    SoundNode,
     Vec2,
     run_game,
 )
 
 
 class MovingRect(Node):
-    velocity = Vec2(400, 0)
+    velocity = Vec2(600, 0)
 
     def __init__(self):
         super().__init__(position=Vec2(100, 100))
@@ -23,6 +24,7 @@ class MovingRect(Node):
         self.add_child(
             RectNode('rect', Vec2(0, 0), Vec2(100, 100), 0xFF00FF).add_child(
                 RectNode('sub', Vec2(0, 0), Vec2(50, 50), 0x00FF00),
+                SoundNode('./assets/sfx/shot.wav', 'fire_sound'),
             )
         )
 
@@ -37,6 +39,7 @@ class MovingRect(Node):
 
         if self.position[0] > game.engine.screen_surface.get_width():
             self.position[0] = -self.size.x / 2
+            self.find_child('rect/fire_sound').play()
 
 
 class QuackHunt(Game):
@@ -53,6 +56,9 @@ class QuackHunt(Game):
             MovingRect(),
             SpriteNode('./assets/gfx/blob.png', position=Vec2(150, 150)),
         )
+
+    def on_frame_start(self) -> None:
+        self.engine.set_title(str(round(self.engine.clock.get_fps())))
 
 
 def run():
