@@ -2,76 +2,86 @@
 # QUACK HUNT
 # Copyright (c) 2023 SilentByte <https://silentbyte.com/>
 #
-import pygame
 
 from quackhunt.engine import (
     Game,
     EngineConfig,
-    Node,
-    RectNode,
     SpriteNode,
     SoundNode,
     Vec2,
     run_game,
 )
 
-
-class MovingRect(Node):
-    def __init__(self):
-        super().__init__(position=Vec2(100, 100))
-
-        self.add_child(
-            RectNode('rect', Vec2(0, 0), Vec2(200, 200), 0xFF00FF).add_child(
-                RectNode('sub', Vec2(0, 0), Vec2(50, 50), 0x00FF00),
-                SoundNode('./assets/sfx/shot.wav', 'fire_sound'),
-            )
-        )
-
-    def update(self, game: Game) -> None:
-        keys = game.pyg.key.get_pressed()
-        movement = Vec2()
-
-        if keys[game.pyg.K_LEFT]:
-            movement.x -= 1
-
-        if keys[game.pyg.K_RIGHT]:
-            movement.x += 1
-
-        if keys[game.pyg.K_UP]:
-            movement.y -= 1
-
-        if keys[game.pyg.K_DOWN]:
-            movement.y += 1
-
-        if movement:
-            movement.normalize_ip()
-            self.position += 1200 * movement * game.dt
-
-        if self.position[0] > game.engine.screen_surface.get_width():
-            self.position[0] = -self.size.x / 2
-            self.find_child('rect/fire_sound').play()
-
-
 RENDER_WIDTH = 1920
 RENDER_HEIGHT = 1080
 RENDER_ORIGIN = Vec2(RENDER_WIDTH, RENDER_HEIGHT) / 2
 
 
+class BackgroundNode(SpriteNode):
+    def __init__(self):
+        super().__init__(
+            filename='./assets/gfx/background.png',
+            position=RENDER_ORIGIN,
+        )
+
+
+class ForegroundNode(SpriteNode):
+    def __init__(self):
+        super().__init__(
+            filename='./assets/gfx/foreground.png',
+            position=RENDER_ORIGIN,
+        )
+
+
+class CrosshairNode(SpriteNode):
+    def __init__(self):
+        super().__init__(
+            name='crosshair',
+            filename='./assets/gfx/crosshair.png',
+            position=RENDER_ORIGIN,
+        )
+
+    def update(self, game: 'QuackHunt') -> None:
+        self.position = game.aim_position
+
+        for e in game.events:
+            if e.type == game.pyg.MOUSEMOTION:
+                self.position = Vec2(e.pos)
+                game.aim_position = self.position
+                break
+
+
 class QuackHunt(Game):
+    aim_position: Vec2 = RENDER_ORIGIN
+
+    def __init__(self):
+        self.aim_position = Vec2()
+
     def get_config(self) -> EngineConfig:
         return EngineConfig(
             title='Quack Hunt',
             width=RENDER_WIDTH,
             height=RENDER_HEIGHT,
             target_fps=60,
+            show_cursor=True,
         )
+
+    def update_aim(self, x: float, y: float) -> None:
+        self.aim_position = Vec2(x * RENDER_WIDTH, y * RENDER_HEIGHT)
+
+    def fire(self) -> None:
+        self.scene_graph.root_node.find_child('fire_sound').play()
 
     def on_start(self) -> None:
         self.scene_graph.add_child(
-            SpriteNode('./assets/gfx/background.png', position=RENDER_ORIGIN),
-            MovingRect(),
-            SpriteNode('./assets/gfx/foreground.png', position=RENDER_ORIGIN),
+            BackgroundNode(),
+            ForegroundNode(),
+            CrosshairNode(),
+            SoundNode(name='fire_sound', filename='./assets/sfx/fire.wav')
         )
+
+    def on_stop(self) -> None:
+        pass
 
     def on_frame_start(self) -> None:
         self.engine.set_title(str(round(self.engine.clock.get_fps())))

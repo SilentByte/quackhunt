@@ -29,6 +29,7 @@ class EngineConfig:
     target_fps: int = 60
     clear_color: int = 0x111111
     sound_channels: int = 64
+    show_cursor: bool = True
 
 
 Vec2 = pyg.Vector2
@@ -174,6 +175,7 @@ class Game:
     pyg = pyg
     engine: '_Engine'
     scene_graph: SceneGraph
+    events: List[pyg.event.Event]
     dt: float
 
     def get_config(self) -> EngineConfig:
@@ -226,6 +228,7 @@ class _Engine:
         self.frame_counter = 0
         self.start_time = 0
 
+        pyg.mouse.set_visible(config.show_cursor)
         pyg.mixer.set_num_channels(config.sound_channels)
 
         self.set_title(config.title)
@@ -242,8 +245,10 @@ class _Engine:
     def log(self, object) -> None:
         utils.debug_print(object, f'{self.frame_counter}   {self.get_time():.2f}   {self.clock.get_fps():.0f}  ')
 
-    def _handle_events(self) -> bool:
-        for event in pyg.event.get():
+    def _handle_events(self, game: Game) -> bool:
+        game.events = pyg.event.get()
+
+        for event in game.events:
             if event.type == pyg.QUIT:
                 return False
 
@@ -260,7 +265,7 @@ class _Engine:
         while True:
             self.frame_counter += 1
 
-            if not self._handle_events():
+            if not self._handle_events(game):
                 game.on_stop()
                 self._shutdown()
                 break
