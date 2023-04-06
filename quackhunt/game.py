@@ -8,6 +8,7 @@ from quackhunt.engine import (
     EngineConfig,
     Node,
     RectNode,
+    SpriteNode,
     Vec2,
     run_game,
 )
@@ -49,7 +50,8 @@ class QuackHunt(Game):
 
     def on_start(self) -> None:
         self.scene_graph.add_child(
-            MovingRect()
+            MovingRect(),
+            SpriteNode('./assets/gfx/blob.png', position=Vec2(150, 150)),
         )
 
 

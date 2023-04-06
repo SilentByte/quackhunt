@@ -89,6 +89,22 @@ class RectNode(Node):
         pyg.draw.rect(surface, self.color, self.get_adjusted_rect(offset))
 
 
+class SpriteNode(Node):
+    texture: pyg.Surface
+
+    def __init__(
+            self,
+            filename: str,
+            name: str = '',
+            position: Vec2 = Vec2(),
+    ):
+        self.texture = pyg.image.load(filename).convert_alpha()
+        super().__init__(name, position, Vec2(self.texture.get_width(), self.texture.get_height()))
+
+    def draw(self, surface: pyg.Surface, offset: Vec2) -> None:
+        surface.blit(self.texture, self.get_adjusted_rect(offset))
+
+
 class SceneGraph:
     root_node: Node
 
