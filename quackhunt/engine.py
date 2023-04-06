@@ -25,6 +25,7 @@ class EngineConfig:
     title: str = 'Quack Hunt Engine'
     width: int = 1920
     height: int = 1080
+    vsync: bool = True
     target_fps: int = 60
     clear_color: int = 0x111111
     sound_channels: int = 64
@@ -211,7 +212,12 @@ class _Engine:
         pyg.init()
         pyg.mixer.init()
 
-        self.screen_surface = pyg.display.set_mode((config.width, config.height), pyg.RESIZABLE | pyg.SCALED)
+        self.screen_surface = pyg.display.set_mode(
+            size=(config.width, config.height),
+            flags=pyg.RESIZABLE | pyg.SCALED,
+            vsync=config.vsync,
+        )
+
         self.clock = pyg.time.Clock()
         self.target_fps = config.target_fps
         self.clear_color = config.clear_color
