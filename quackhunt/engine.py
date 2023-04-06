@@ -170,13 +170,18 @@ class SceneGraph:
         draw_inner(self.root_node, self.root_node.position)
 
 
+EventQueue = List[tuple[str, Any]]
+
+
 # noinspection PyMethodMayBeStatic
 class Game:
     pyg = pyg
-    engine: '_Engine'
-    scene_graph: SceneGraph
-    events: List[pyg.event.Event]
-    dt: float
+    engine: '_Engine' = None
+    scene_graph: SceneGraph = None
+    native_events: List[pyg.event.Event] = None
+    events: EventQueue = None
+    dt: float = 0
+    is_running: bool = False
 
     def get_config(self) -> EngineConfig:
         return EngineConfig(
@@ -187,10 +192,10 @@ class Game:
             clear_color=0x111111,
         )
 
-    def on_start(self) -> None:
+    def on_started(self) -> None:
         pass
 
-    def on_stop(self) -> None:
+    def on_stopped(self) -> None:
         pass
 
     def on_frame_start(self) -> None:
@@ -209,6 +214,7 @@ class _Engine:
     scene_graph: SceneGraph
     frame_counter: int
     start_time: float
+    event_queue: EventQueue
 
     def __init__(self, config: EngineConfig):
         pyg.init()
@@ -227,6 +233,7 @@ class _Engine:
         self.fps = 0.0
         self.frame_counter = 0
         self.start_time = 0
+        self.event_queue = []
 
         pyg.mouse.set_visible(config.show_cursor)
         pyg.mixer.set_num_channels(config.sound_channels)
@@ -242,14 +249,24 @@ class _Engine:
     def get_time(self) -> float:
         return time() - self.start_time
 
-    def log(self, object) -> None:
-        utils.debug_print(object, f'{self.frame_counter}   {self.get_time():.2f}   {self.clock.get_fps():.0f}  ')
+    def log(self, message: str, object=None) -> None:
+        utils.debug_print(
+            object,
+            f'{self.frame_counter}   {self.get_time():.2f}   {self.clock.get_fps():.0f}  {message}',
+        )
 
-    def _handle_events(self, game: Game) -> bool:
-        game.events = pyg.event.get()
+    def queue_event(self, name: str, data: Any = None) -> None:
+        self.log('Event queued', (name, data))
+        self.event_queue.append((name, data))
 
-        for event in game.events:
+    def _handle_native_events(self, game: Game) -> bool:
+        game.native_events = pyg.event.get()
+
+        for event in game.native_events:
             if event.type == pyg.QUIT:
+                return False
+
+            if event.type == pyg.KEYDOWN and event.key == pyg.K_ESCAPE:
                 return False
 
         return True
@@ -260,17 +277,24 @@ class _Engine:
         game.pyg = pyg
         game.engine = self
         game.scene_graph = self.scene_graph
-        game.on_start()
+        game.native_events = []
+        game.dt = 0
+        game.is_running = True
+
+        game.on_started()
 
         while True:
             self.frame_counter += 1
 
-            if not self._handle_events(game):
-                game.on_stop()
+            if not self._handle_native_events(game):
+                game.is_running = False
+                game.on_stopped()
                 self._shutdown()
                 break
 
             game.dt = self.clock.tick(self.target_fps) / 1000.0
+            game.events = self.event_queue
+            self.event_queue = []
 
             self.screen_surface.fill(self.clear_color)
 
