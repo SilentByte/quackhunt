@@ -5,6 +5,10 @@
 
 from threading import Thread
 
+from quackhunt.detector import (
+    Detector,
+    DetectionResult,
+)
 from quackhunt.engine import (
     Game,
     EngineConfig,
@@ -63,18 +67,16 @@ class CrosshairNode(SpriteNode):
 
 
 def detection_runner(game: 'QuackHunt'):
-    import time
-    import random
+    detector = Detector(
+        video_capture_index=0,
+        show_debug_windows=True,
+        flip_vertically=False,
+        flip_horizontally=True,
+    )
 
     while game.is_running:
-        time.sleep(0.5)
-        game.update_aim(random.random(), random.random())
-        time.sleep(0.5)
-        game.update_aim(random.random(), random.random())
-        time.sleep(0.5)
-        game.update_aim(random.random(), random.random())
-        time.sleep(0.5)
-        game.fire()
+        detection = detector.process_frame()
+        game.update_detection(detection)
 
 
 class QuackHunt(Game):
@@ -93,8 +95,12 @@ class QuackHunt(Game):
             show_cursor=True,
         )
 
-    def update_aim(self, x: float, y: float) -> None:
-        self.aim_position = Vec2(x * RENDER_WIDTH, y * RENDER_HEIGHT)
+    def update_detection(self, detection_result: DetectionResult) -> None:
+        if detection_result.primary_detection is not None:
+            self.aim_position = Vec2(
+                detection_result.primary_detection[0] * RENDER_WIDTH,
+                detection_result.primary_detection[1] * RENDER_HEIGHT,
+            )
 
     def fire(self) -> None:
         self.engine.queue_event('fire')
@@ -106,7 +112,12 @@ class QuackHunt(Game):
             CrosshairNode(),
         )
 
-        self.detection_thread = Thread(target=detection_runner, args=[self])
+        self.detection_thread = Thread(
+            target=detection_runner,
+            daemon=True,
+            args=[self],
+        )
+
         self.detection_thread.start()
 
     def on_stopped(self) -> None:
