@@ -4,25 +4,25 @@
   "flip_horizontally": true,
   "show_debug_windows": false,
   "primary_lower_threshold": [
-    35,
-    93,
-    105
+    36,
+    101,
+    109
   ],
   "primary_upper_threshold": [
-    92,
-    255,
+    77,
+    216,
     255
   ],
-  "primary_min_confidence": 0.0008175358304477408,
+  "primary_min_confidence": 3.7282130506030095e-05,
   "secondary_lower_threshold": [
-    0,
-    198,
-    167
+    103,
+    96,
+    112
   ],
   "secondary_upper_threshold": [
-    25,
+    124,
     255,
     255
   ],
-  "secondary_min_confidence": 0.0003117246470972319
+  "secondary_min_confidence": 0.0004468607933653976
 }
