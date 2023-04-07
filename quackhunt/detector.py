@@ -241,6 +241,13 @@ def calibration_tool_main():
     root.title('QuackHunt Calibration')
     root.geometry('1200x1800')
 
+    calibration_tool_main.is_running = True
+
+    def terminate():
+        calibration_tool_main.is_running = False
+
+    root.protocol('WM_DELETE_WINDOW', terminate)
+
     label(
         '\n'
         'QUACK HUNT CALIBRATION\n'
@@ -278,10 +285,15 @@ def calibration_tool_main():
 
     button('SAVE CONFIG', save_config_callback)
 
-    while True:
+    while calibration_tool_main.is_running:
         root.update()
         detector.process_frame()
 
+    detector.destroy()
+    root.destroy()
+
+
+calibration_tool_main.is_running = False
 
 if __name__ == '__main__':
     calibration_tool_main()
