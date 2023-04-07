@@ -8,6 +8,9 @@ from dataclasses import dataclass
 
 import cv2
 import numpy as np
+import tkinter as tk
+
+from quackhunt import config
 
 Point = tuple[float, float]
 Size = tuple[int, int]
@@ -147,3 +150,138 @@ class Detector:
 
         if self.show_debug_windows:
             cv2.destroyAllWindows()
+
+
+def calibration_tool_main():
+    config_data = config.load_config()
+    detector = Detector(
+        video_capture_index=config_data.video_capture_index,
+        flip_vertically=config_data.flip_vertically,
+        flip_horizontally=config_data.flip_horizontally,
+        show_debug_windows=True,
+        primary_lower_threshold=config_data.primary_lower_threshold,
+        primary_upper_threshold=config_data.primary_upper_threshold,
+        primary_min_confidence=config_data.primary_min_confidence,
+        secondary_lower_threshold=config_data.secondary_lower_threshold,
+        secondary_upper_threshold=config_data.secondary_upper_threshold,
+        secondary_min_confidence=config_data.secondary_min_confidence,
+    )
+
+    def primary_lower_threshold_h_callback(value: str):
+        detector.primary_lower_threshold[0] = int(value)
+
+    def primary_lower_threshold_s_callback(value: str):
+        detector.primary_lower_threshold[1] = int(value)
+
+    def primary_lower_threshold_v_callback(value: str):
+        detector.primary_lower_threshold[2] = int(value)
+
+    def primary_upper_threshold_h_callback(value: str):
+        detector.primary_upper_threshold[0] = int(value)
+
+    def primary_upper_threshold_s_callback(value: str):
+        detector.primary_upper_threshold[1] = int(value)
+
+    def primary_upper_threshold_v_callback(value: str):
+        detector.primary_upper_threshold[2] = int(value)
+
+    def primary_min_confidence_callback(value: str):
+        detector.primary_min_confidence = ((100 ** (float(value) / 10000)) - 1) / 99
+
+    def secondary_lower_threshold_h_callback(value: str):
+        detector.secondary_lower_threshold[0] = int(value)
+
+    def secondary_lower_threshold_s_callback(value: str):
+        detector.secondary_lower_threshold[1] = int(value)
+
+    def secondary_lower_threshold_v_callback(value: str):
+        detector.secondary_lower_threshold[2] = int(value)
+
+    def secondary_upper_threshold_h_callback(value: str):
+        detector.secondary_upper_threshold[0] = int(value)
+
+    def secondary_upper_threshold_s_callback(value: str):
+        detector.secondary_upper_threshold[1] = int(value)
+
+    def secondary_upper_threshold_v_callback(value: str):
+        detector.secondary_upper_threshold[2] = int(value)
+
+    def secondary_min_confidence_callback(value: str):
+        detector.secondary_min_confidence = ((100 ** (float(value) / 10000)) - 1) / 99
+
+    def save_config_callback():
+        def c2l(c):
+            return list(int(x) for x in c)
+
+        config_data.flip_vertically = detector.flip_vertically
+        config_data.flip_horizontally = detector.flip_horizontally
+        config_data.primary_lower_threshold = c2l(detector.primary_lower_threshold)
+        config_data.primary_upper_threshold = c2l(detector.primary_upper_threshold)
+        config_data.primary_min_confidence = detector.primary_min_confidence
+        config_data.secondary_lower_threshold = c2l(detector.secondary_lower_threshold)
+        config_data.secondary_upper_threshold = c2l(detector.secondary_upper_threshold)
+        config_data.secondary_min_confidence = detector.secondary_min_confidence
+
+        config.save_config(config_data)
+
+    def label(text: str):
+        tk.Label(root, text=text) \
+            .pack(side=tk.TOP, padx=10, pady=10)
+
+    def slider(min: int, max: int, value: int, callback: callable):
+        scale = tk.Scale(root, from_=min, to=max, orient=tk.HORIZONTAL, length=400, command=callback)
+        scale.set(value)
+        scale.pack(side=tk.TOP, fill=tk.X, padx=50, pady=10)
+
+    def button(text: str, callback: callable):
+        tk.Button(text=text, height=2, command=callback) \
+            .pack(side=tk.TOP, fill=tk.X, padx=50, pady=10)
+
+    root = tk.Tk()
+    root.title('QuackHunt Calibration')
+    root.geometry('1200x1800')
+
+    label(
+        '\n'
+        'QUACK HUNT CALIBRATION\n'
+        '\n'
+        'Hold objects of two distinct colors into the camera (primary/secondary)\n'
+        'and adjust sliders until they are detected correctly.\n'
+        '\n'
+    )
+
+    label('primary_lower_threshold (HSV)')
+    slider(0, 255, config_data.primary_lower_threshold[0], primary_lower_threshold_h_callback)
+    slider(0, 255, config_data.primary_lower_threshold[1], primary_lower_threshold_s_callback)
+    slider(0, 255, config_data.primary_lower_threshold[2], primary_lower_threshold_v_callback)
+
+    label('primary_upper_threshold (HSV)')
+    slider(0, 255, config_data.primary_upper_threshold[0], primary_upper_threshold_h_callback)
+    slider(0, 255, config_data.primary_upper_threshold[1], primary_upper_threshold_s_callback)
+    slider(0, 255, config_data.primary_upper_threshold[2], primary_upper_threshold_v_callback)
+
+    label('primary_min_confidence')
+    slider(0, 10000, int(config_data.primary_min_confidence * 10000), primary_min_confidence_callback)
+
+    label('secondary_lower_threshold (HSV)')
+    slider(0, 255, config_data.secondary_lower_threshold[0], secondary_lower_threshold_h_callback)
+    slider(0, 255, config_data.secondary_lower_threshold[1], secondary_lower_threshold_s_callback)
+    slider(0, 255, config_data.secondary_lower_threshold[2], secondary_lower_threshold_v_callback)
+
+    label('secondary_upper_threshold (HSV)')
+    slider(0, 255, config_data.secondary_upper_threshold[0], secondary_upper_threshold_h_callback)
+    slider(0, 255, config_data.secondary_upper_threshold[1], secondary_upper_threshold_s_callback)
+    slider(0, 255, config_data.secondary_upper_threshold[2], secondary_upper_threshold_v_callback)
+
+    label('secondary_min_confidence')
+    slider(0, 10000, int(config_data.secondary_min_confidence * 10000), secondary_min_confidence_callback)
+
+    button('SAVE CONFIG', save_config_callback)
+
+    while True:
+        root.update()
+        detector.process_frame()
+
+
+if __name__ == '__main__':
+    calibration_tool_main()

@@ -5,6 +5,7 @@
 
 from threading import Thread
 
+from quackhunt import config
 from quackhunt.detector import (
     Detector,
     DetectionResult,
@@ -67,11 +68,18 @@ class CrosshairNode(SpriteNode):
 
 
 def detection_runner(game: 'QuackHunt'):
+    config_data = config.load_config()
     detector = Detector(
-        video_capture_index=0,
-        show_debug_windows=True,
-        flip_vertically=False,
-        flip_horizontally=True,
+        video_capture_index=config_data.video_capture_index,
+        flip_vertically=config_data.flip_vertically,
+        flip_horizontally=config_data.flip_horizontally,
+        show_debug_windows=config_data.show_debug_windows,
+        primary_lower_threshold=config_data.primary_lower_threshold,
+        primary_upper_threshold=config_data.primary_upper_threshold,
+        primary_min_confidence=config_data.primary_min_confidence,
+        secondary_lower_threshold=config_data.secondary_lower_threshold,
+        secondary_upper_threshold=config_data.secondary_upper_threshold,
+        secondary_min_confidence=config_data.secondary_min_confidence,
     )
 
     while game.is_running:
