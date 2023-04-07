@@ -14,7 +14,7 @@ from quackhunt import config
 
 Point = tuple[float, float]
 Size = tuple[int, int]
-Rect = tuple[int, int, int]
+Rect = tuple[int, int, int, int]
 Color = tuple[int, int, int]
 
 
@@ -41,6 +41,7 @@ class Detector:
             secondary_lower_threshold: Color = (110, 100, 20),
             secondary_upper_threshold: Color = (126, 240, 240),
             secondary_min_confidence: float = 0.001,
+            stretch_factors: Point = (1.0, 1.0),
     ):
         self.video_capture = cv2.VideoCapture(video_capture_index)
         self.flip_vertically = flip_vertically
@@ -54,6 +55,8 @@ class Detector:
         self.secondary_lower_threshold = np.array(secondary_lower_threshold)
         self.secondary_upper_threshold = np.array(secondary_upper_threshold)
         self.secondary_min_confidence = secondary_min_confidence
+
+        self.stretch_factors = stretch_factors
 
     @staticmethod
     def _detect(mask, frame_size: Size, min_confidence: float):
@@ -88,15 +91,36 @@ class Detector:
             -1,
         )
 
-    @staticmethod
-    def _convert_rect_to_position(rect: Rect | None, frame_size: Size) -> Point | None:
+    def _annotate_adjusted_detection(self, frame, detection: Rect, frame_size: Size, color: Color):
+        position = self._convert_rect_to_position(detection, frame_size)
+        if position is None:
+            return
+
+        x = int((position[0] / 2 + 0.5) * frame_size[0])
+        y = int((position[1] / 2 + 0.5) * frame_size[1])
+
+        cv2.line(
+            frame,
+            (x, 0),
+            (x, frame_size[1]),
+            color,
+        )
+
+        cv2.line(
+            frame,
+            (0, y),
+            (frame_size[0], y),
+            color,
+        )
+
+    def _convert_rect_to_position(self, rect: Rect | None, frame_size: Size) -> Point | None:
         if rect is None:
             return None
 
         center = (rect[0] + rect[2] / 2, rect[1] + rect[3] / 2)
         return (
-            center[0] / frame_size[0],
-            center[1] / frame_size[1],
+            (center[0] / frame_size[0] - 0.5) * 2 * self.stretch_factors[0],
+            (center[1] / frame_size[1] - 0.5) * 2 * self.stretch_factors[1],
         )
 
     def process_frame(self) -> DetectionResult:
@@ -124,6 +148,7 @@ class Detector:
 
         if primary_detection is not None:
             Detector._annotate_detection(frame, primary_detection, (0, 255, 0))
+            self._annotate_adjusted_detection(frame, primary_detection, frame_size, (0, 255, 0))
 
         if secondary_detection is not None:
             Detector._annotate_detection(frame, secondary_detection, (255, 0, 0))
@@ -139,8 +164,8 @@ class Detector:
             cv2.pollKey()
 
         return DetectionResult(
-            primary_detection=Detector._convert_rect_to_position(primary_detection, frame_size),
-            secondary_detection=Detector._convert_rect_to_position(secondary_detection, frame_size),
+            primary_detection=self._convert_rect_to_position(primary_detection, frame_size),
+            secondary_detection=self._convert_rect_to_position(secondary_detection, frame_size),
         )
 
     def destroy(self) -> None:
@@ -165,6 +190,7 @@ def calibration_tool_main():
         secondary_lower_threshold=config_data.secondary_lower_threshold,
         secondary_upper_threshold=config_data.secondary_upper_threshold,
         secondary_min_confidence=config_data.secondary_min_confidence,
+        stretch_factors=config_data.stretch_factors,
     )
 
     def primary_lower_threshold_h_callback(value: str):
@@ -209,18 +235,25 @@ def calibration_tool_main():
     def secondary_min_confidence_callback(value: str):
         detector.secondary_min_confidence = ((100 ** (float(value) / 10000)) - 1) / 99
 
-    def save_config_callback():
-        def c2l(c):
-            return list(int(x) for x in c)
+    def stretch_factor_h_callback(value: str):
+        detector.stretch_factors = (float(value) / 5000, detector.stretch_factors[1])
 
+    def stretch_factor_v_callback(value: str):
+        detector.stretch_factors = (detector.stretch_factors[0], float(value) / 5000)
+
+    def save_config_callback():
         config_data.flip_vertically = detector.flip_vertically
         config_data.flip_horizontally = detector.flip_horizontally
-        config_data.primary_lower_threshold = c2l(detector.primary_lower_threshold)
-        config_data.primary_upper_threshold = c2l(detector.primary_upper_threshold)
+
+        config_data.primary_lower_threshold = list(int(x) for x in detector.primary_lower_threshold)
+        config_data.primary_upper_threshold = list(int(x) for x in detector.primary_upper_threshold)
         config_data.primary_min_confidence = detector.primary_min_confidence
-        config_data.secondary_lower_threshold = c2l(detector.secondary_lower_threshold)
-        config_data.secondary_upper_threshold = c2l(detector.secondary_upper_threshold)
+
+        config_data.secondary_lower_threshold = list(int(x) for x in detector.secondary_lower_threshold)
+        config_data.secondary_upper_threshold = list(int(x) for x in detector.secondary_upper_threshold)
         config_data.secondary_min_confidence = detector.secondary_min_confidence
+
+        config_data.stretch_factors = list(float(x) for x in detector.stretch_factors)
 
         config.save_config(config_data)
 
@@ -239,7 +272,7 @@ def calibration_tool_main():
 
     root = tk.Tk()
     root.title('QuackHunt Calibration')
-    root.geometry('1200x1800')
+    root.geometry('1200x2000')
 
     calibration_tool_main.is_running = True
 
@@ -282,6 +315,10 @@ def calibration_tool_main():
 
     label('secondary_min_confidence')
     slider(0, 10000, int(config_data.secondary_min_confidence * 10000), secondary_min_confidence_callback)
+
+    label('stretch_factors (horizontal/vertical')
+    slider(0, 10000, int(config_data.stretch_factors[0] * 5000), stretch_factor_h_callback)
+    slider(0, 10000, int(config_data.stretch_factors[1] * 5000), stretch_factor_v_callback)
 
     button('SAVE CONFIG', save_config_callback)
 

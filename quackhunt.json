@@ -2,7 +2,7 @@
   "video_capture_index": 0,
   "flip_vertically": false,
   "flip_horizontally": true,
-  "show_debug_windows": false,
+  "show_debug_windows": true,
   "primary_lower_threshold": [
     36,
     101,
@@ -13,7 +13,7 @@
     216,
     255
   ],
-  "primary_min_confidence": 3.7282130506030095e-05,
+  "primary_min_confidence": 0.00035497138059943325,
   "secondary_lower_threshold": [
     103,
     96,
@@ -24,5 +24,9 @@
     255,
     255
   ],
-  "secondary_min_confidence": 0.0004468607933653976
+  "secondary_min_confidence": 0.0001783198244498308,
+  "stretch_factors": [
+    2.0,
+    2.0
+  ]
 }

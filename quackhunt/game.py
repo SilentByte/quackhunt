@@ -80,6 +80,7 @@ def detection_runner(game: 'QuackHunt'):
         secondary_lower_threshold=config_data.secondary_lower_threshold,
         secondary_upper_threshold=config_data.secondary_upper_threshold,
         secondary_min_confidence=config_data.secondary_min_confidence,
+        stretch_factors=config_data.stretch_factors,
     )
 
     while game.is_running:
@@ -106,8 +107,8 @@ class QuackHunt(Game):
     def update_detection(self, detection_result: DetectionResult) -> None:
         if detection_result.primary_detection is not None:
             self.aim_position = Vec2(
-                detection_result.primary_detection[0] * RENDER_WIDTH,
-                detection_result.primary_detection[1] * RENDER_HEIGHT,
+                (detection_result.primary_detection[0]/2+0.5) * RENDER_WIDTH,
+                (detection_result.primary_detection[1]/2+0.5) * RENDER_HEIGHT,
             )
 
     def fire(self) -> None:

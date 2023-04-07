@@ -29,6 +29,7 @@ class QuackHuntConfig:
     secondary_lower_threshold: tuple[int, int, int] = (110, 100, 20)
     secondary_upper_threshold: tuple[int, int, int] = (126, 240, 240)
     secondary_min_confidence: float = 0.0
+    stretch_factors: tuple[float, float] = (1.0, 1.0)
 
     @staticmethod
     def from_dict(config: dict) -> 'QuackHuntConfig':
@@ -43,6 +44,7 @@ class QuackHuntConfig:
             secondary_lower_threshold=_list_to_color(config['secondary_lower_threshold']),
             secondary_upper_threshold=_list_to_color(config['secondary_upper_threshold']),
             secondary_min_confidence=float(config['secondary_min_confidence']),
+            stretch_factors=(float(config['stretch_factors'][0]), float(config['stretch_factors'][1])),
         )
 
     def to_dict(self) -> dict:
@@ -66,4 +68,4 @@ def load_config() -> QuackHuntConfig:
 def save_config(config: QuackHuntConfig) -> None:
     filename = _config_file_path()
     with open(filename, 'w') as fp:
-        return json.dump(config.to_dict(), fp,indent=2)
+        return json.dump(config.to_dict(), fp, indent=2)
