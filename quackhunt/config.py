@@ -30,6 +30,7 @@ class QuackHuntConfig:
     secondary_upper_threshold: tuple[int, int, int] = (126, 240, 240)
     secondary_min_confidence: float = 0.0
     stretch_factors: tuple[float, float] = (1.0, 1.0)
+    nudge_addends: tuple[float, float] = (0.0, 0.0)
 
     @staticmethod
     def from_dict(config: dict) -> 'QuackHuntConfig':
@@ -45,6 +46,7 @@ class QuackHuntConfig:
             secondary_upper_threshold=_list_to_color(config['secondary_upper_threshold']),
             secondary_min_confidence=float(config['secondary_min_confidence']),
             stretch_factors=(float(config['stretch_factors'][0]), float(config['stretch_factors'][1])),
+            nudge_addends=(float(config['nudge_addends'][0]), float(config['nudge_addends'][1])),
         )
 
     def to_dict(self) -> dict:

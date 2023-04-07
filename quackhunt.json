@@ -13,7 +13,7 @@
     216,
     255
   ],
-  "primary_min_confidence": 0.00035497138059943325,
+  "primary_min_confidence": 1.3964705425238853e-05,
   "secondary_lower_threshold": [
     103,
     96,
@@ -24,9 +24,13 @@
     255,
     255
   ],
-  "secondary_min_confidence": 0.0001783198244498308,
+  "secondary_min_confidence": 4.652758311518568e-06,
   "stretch_factors": [
-    2.0,
-    2.0
+    1.4915,
+    1.9492
+  ],
+  "nudge_addends": [
+    0.12400000000000011,
+    -0.24060000000000004
   ]
 }
