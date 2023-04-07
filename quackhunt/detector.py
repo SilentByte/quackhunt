@@ -340,11 +340,11 @@ def calibration_tool_main():
     label('secondary_min_confidence')
     slider(0, 10000, int(config_data.secondary_min_confidence * 10000), secondary_min_confidence_callback)
 
-    label('stretch_factors (horizontal/vertical')
+    label('stretch_factors (horizontal/vertical)')
     slider(0, 10000, int((config_data.stretch_factors[0] - 1) * 10000), stretch_factor_h_callback)
     slider(0, 10000, int((config_data.stretch_factors[1] - 1) * 10000), stretch_factor_v_callback)
 
-    label('nudge_addends (horizontal/vertical')
+    label('nudge_addends (horizontal/vertical)')
     slider(0, 10000, int((config_data.nudge_addends[0] + 1) * 5000), nudge_addend_h_callback)
     slider(0, 10000, int((config_data.nudge_addends[1] + 1) * 5000), nudge_addend_v_callback)
 
