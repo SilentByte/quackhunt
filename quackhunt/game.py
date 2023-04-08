@@ -3,7 +3,10 @@
 # Copyright (c) 2023 SilentByte <https://silentbyte.com/>
 #
 
+import math
+import random
 from threading import Thread
+from typing import List
 
 from quackhunt import config
 from quackhunt.detector import (
@@ -11,9 +14,12 @@ from quackhunt.detector import (
     DetectionResult,
 )
 from quackhunt.engine import (
+    pyg,
     Game,
     EngineConfig,
+    Node,
     SpriteNode,
+    TextNode,
     SoundNode,
     Vec2,
     run_game,
@@ -22,6 +28,14 @@ from quackhunt.engine import (
 RENDER_WIDTH = 1920
 RENDER_HEIGHT = 1080
 RENDER_ORIGIN = Vec2(RENDER_WIDTH, RENDER_HEIGHT) / 2
+
+
+def rand() -> float:
+    return random.random()
+
+
+def circle_collision(point: Vec2, position: Vec2, radius: float) -> bool:
+    return point.distance_squared_to(position) < radius * radius
 
 
 class BackgroundNode(SpriteNode):
@@ -57,14 +71,104 @@ class CrosshairNode(SpriteNode):
         self.position = game.aim_position
 
         for e in game.native_events:
-            if e.type == game.pyg.MOUSEMOTION:
+            if e.type == pyg.MOUSEMOTION:
                 self.position = Vec2(e.pos)
                 game.aim_position = self.position
                 break
 
         for name, data in game.events:
-            if name == 'fire':
+            if name == 'shot_fired':
                 self.fire_sound_node.play()
+
+
+class DuckNode(Node):
+    radius: float
+    movement: Vec2
+    is_hit: bool
+
+    def __init__(self):
+        super().__init__()
+
+        self.radius = 80
+        self.movement = Vec2(100, -400)
+        self.position = Vec2(700, 700)
+        self.is_hit = False
+
+    def update(self, game: 'Game') -> None:
+        if not self.is_hit:
+            for name, data in game.events:
+                if name == 'shot_fired':
+                    if circle_collision(data.position, self.position, self.radius):
+                        game.engine.queue_event('duck_hit')
+                        self.is_hit = True
+
+        self.position += self.movement * game.dt
+
+        if self.position.y < -100:
+            self.position = Vec2(700, 700)
+            self.is_hit = False
+
+    def draw(self, surface: pyg.Surface, offset: Vec2) -> None:
+        color = 0xFF0000 if self.is_hit else 0x00FF00
+        pyg.draw.circle(surface, color, self.position, self.radius, width=8)
+
+
+class DrumNode(SpriteNode):
+    round_nodes: List[SpriteNode]
+
+    def __init__(self):
+        super().__init__(filename='./assets/gfx/drum.png')
+        self.position = Vec2(self.size.x / 2 + 20, RENDER_HEIGHT - self.size.y / 2 - 20)
+        self.round_nodes = []
+
+        for i in range(6):
+            self.round_nodes.append(SpriteNode(
+                filename='./assets/gfx/round.png',
+                position=Vec2(math.cos(math.tau / 6 * (i - 1) - (math.pi / 6)) * 75,
+                              math.sin(math.tau / 6 * (i - 1) - (math.pi / 6)) * 75),
+            ))
+
+        self.add_child(*self.round_nodes)
+
+    def update(self, game: 'QuackHunt') -> None:
+        for i in range(6 - game.rounds_left):
+            self.round_nodes[i].visible = False
+
+
+class UINode(Node):
+    def __init__(self):
+        super().__init__()
+
+        self.score_node = TextNode(None, 200, position=Vec2(RENDER_WIDTH - 400, RENDER_HEIGHT - 200))
+        self.add_child(
+            DrumNode(),
+            self.score_node,
+        )
+
+    def update(self, game: 'QuackHunt') -> None:
+        self.score_node.text = str(game.score).ljust(4, '0')
+
+
+class GameLogicNode(Node):
+    def pull_trigger(self, game: 'QuackHunt') -> None:
+        if game.rounds_left == 0:
+            return
+
+        game.rounds_left -= 1
+        game.engine.queue_event('shot_fired', position=game.aim_position)
+
+    def duck_hit(self, game: 'QuackHunt') -> None:
+        game.score += 1000
+
+    def update(self, game: 'QuackHunt') -> None:
+        for e in game.native_events:
+            if e.type == pyg.MOUSEBUTTONDOWN and e.button == 1:
+                self.pull_trigger(game)
+                break
+
+        for name, data in game.events:
+            if name == 'duck_hit':
+                self.duck_hit(game)
 
 
 def detection_runner(game: 'QuackHunt'):
@@ -92,6 +196,8 @@ def detection_runner(game: 'QuackHunt'):
 class QuackHunt(Game):
     detection_thread: Thread = None
     aim_position: Vec2 = RENDER_ORIGIN
+    rounds_left: int = 6
+    score: int = 0
 
     def __init__(self):
         self.aim_position = Vec2()
@@ -112,13 +218,13 @@ class QuackHunt(Game):
                 (detection_result.primary_detection[1] / 2 + 0.5) * RENDER_HEIGHT,
             )
 
-    def fire(self) -> None:
-        self.engine.queue_event('fire')
-
     def on_started(self) -> None:
         self.scene_graph.add_child(
+            GameLogicNode(),
             BackgroundNode(),
+            DuckNode(),
             ForegroundNode(),
+            UINode(),
             CrosshairNode(),
         )
 

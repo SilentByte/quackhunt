@@ -20,6 +20,12 @@ def _global_id() -> int:
 _global_id.counter = 0
 
 
+class DirectDict(dict):
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
+
 @dataclass
 class EngineConfig:
     title: str = 'Quack Hunt Engine'
@@ -42,6 +48,7 @@ class Node:
     children: List['Node']
     position: Vec2
     size: Vec2
+    visible: bool
 
     def __init__(self, name: str = '', position: Vec2 = Vec2(), size: Vec2 = Vec2()):
         self.id = _global_id()
@@ -49,9 +56,10 @@ class Node:
         self.children = []
         self.position = position
         self.size = size
+        self.visible = True
 
     def _generate_name(self) -> str:
-        return type(self).__class__.__name__ + '_' + str(self.id)
+        return self.__class__.__name__ + '_' + str(self.id)
 
     def add_child(self, *nodes: 'Node') -> 'Node':
         self.children.extend(nodes)
@@ -124,6 +132,31 @@ class SpriteNode(Node):
         surface.blit(self.texture, self.get_adjusted_rect(offset))
 
 
+class TextNode(Node):
+    font: pyg.font.Font
+    text: str
+    color: int
+
+    def __init__(
+            self,
+            font_name: str | None,
+            font_size: int,
+            name: str = '',
+            position: Vec2 = Vec2(),
+            text: str = '',
+            color: int = 0xFFFFFFFF,
+    ):
+        super().__init__(name, position)
+
+        self.font = pyg.font.Font(font_name or None, font_size)
+        self.text = text
+        self.color = color
+
+    def draw(self, surface: pyg.Surface, offset: Vec2) -> None:
+        text_surface = self.font.render(self.text, True, self.color)
+        surface.blit(text_surface, self.position)
+
+
 class SoundNode(Node):
     sound: pyg.mixer.Sound
 
@@ -163,7 +196,9 @@ class SceneGraph:
 
     def draw(self, surface: pyg.Surface) -> None:
         def draw_inner(node: Node, offset: Vec2) -> None:
-            node.draw(surface, offset)
+            if node.visible:
+                node.draw(surface, offset)
+
             for child_node in node.children:
                 draw_inner(child_node, offset + node.position)
 
@@ -255,7 +290,8 @@ class _Engine:
             f'{self.frame_counter}   {self.get_time():.2f}   {self.clock.get_fps():.0f}  {message}',
         )
 
-    def queue_event(self, name: str, data: Any = None) -> None:
+    def queue_event(self, name: str, **kwargs) -> None:
+        data = DirectDict(kwargs)
         self.log('Event queued', (name, data))
         self.event_queue.append((name, data))
 
