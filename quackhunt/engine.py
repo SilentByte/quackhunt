@@ -5,7 +5,7 @@
 
 from time import time
 from dataclasses import dataclass
-from typing import List, Any, Union
+from typing import List, Any, Union, Optional
 
 import pygame as pyg
 
@@ -45,6 +45,7 @@ SimpleRect = tuple[int | float, int | float, int | float, int | float]
 class Node:
     id: int
     name: str
+    parent: Optional['Node']
     children: List['Node']
     position: Vec2
     size: Vec2
@@ -53,6 +54,7 @@ class Node:
     def __init__(self, name: str = '', position: Vec2 = Vec2(), size: Vec2 = Vec2()):
         self.id = _global_id()
         self.name = name or self._generate_name()
+        self.parent = None
         self.children = []
         self.position = position
         self.size = size
@@ -62,8 +64,17 @@ class Node:
         return self.__class__.__name__ + '_' + str(self.id)
 
     def add_child(self, *nodes: 'Node') -> 'Node':
-        self.children.extend(nodes)
+        for node in nodes:
+            node.parent = self
+            self.children.append(node)
+
         return self
+
+    def remove_child(self, node: 'Node') -> None:
+        self.children.remove(node)
+
+    def remove(self):
+        self.parent.remove_child(self)
 
     def find_child(self, name: str) -> Union['Node', Any]:
         def find_direct_child(node: Node, child_name: str):
@@ -206,6 +217,7 @@ class SceneGraph:
 
 
 EventQueue = List[tuple[str, Any]]
+TimerQueue = List[tuple[float, callable, dict]]
 
 
 # noinspection PyMethodMayBeStatic
@@ -250,6 +262,7 @@ class _Engine:
     frame_counter: int
     start_time: float
     event_queue: EventQueue
+    timer_queue: TimerQueue
 
     def __init__(self, config: EngineConfig):
         pyg.init()
@@ -269,6 +282,7 @@ class _Engine:
         self.frame_counter = 0
         self.start_time = 0
         self.event_queue = []
+        self.timer_queue = []
 
         pyg.mouse.set_visible(config.show_cursor)
         pyg.mixer.set_num_channels(config.sound_channels)
@@ -294,6 +308,22 @@ class _Engine:
         data = DirectDict(kwargs)
         self.log('Event queued', (name, data))
         self.event_queue.append((name, data))
+
+    def queue_timer_event(self, delay: float, callback: callable, **kwargs) -> None:
+        self.log('Timer event queued', (delay, callback.__name__, kwargs))
+        self.timer_queue.append(
+            (pyg.time.get_ticks() + delay * 1000, callback, kwargs)
+        )
+
+    def _process_timers(self) -> None:
+        keep = []
+        for timer in self.timer_queue:
+            if timer[0] <= pyg.time.get_ticks():
+                timer[1](**timer[2])
+            else:
+                keep.append(timer)
+
+        self.timer_queue = keep
 
     def _handle_native_events(self, game: Game) -> bool:
         game.native_events = pyg.event.get()
@@ -336,6 +366,7 @@ class _Engine:
 
             game.on_frame_start()
             self.scene_graph.update(game)
+            self._process_timers()
             self.scene_graph.draw(self.screen_surface)
             game.on_frame_end()
 

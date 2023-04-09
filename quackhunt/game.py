@@ -81,9 +81,27 @@ class CrosshairNode(SpriteNode):
                 self.fire_sound_node.play()
 
 
+class HitNode(Node):
+    def remove(self, child: Node):
+        self.remove_child(child)
+        pass
+
+    def update(self, game: 'QuackHunt') -> None:
+        for name, data in game.events:
+            if name == 'duck_hit':
+                child = SpriteNode(filename='./assets/gfx/hit.png', position=data.position)
+                self.add_child(child)
+                game.engine.queue_timer_event(1, self.remove, child=child)
+                break
+
+        for child in self.children:
+            child.position.y -= 100 * game.dt
+
+
 class DuckNode(Node):
     radius: float
     movement: Vec2
+    fall_movement: Vec2
     is_hit: bool
 
     def __init__(self):
@@ -91,22 +109,29 @@ class DuckNode(Node):
 
         self.radius = 80
         self.movement = Vec2(100, -400)
+        self.fall_movement = Vec2(0, 200)
         self.position = Vec2(700, 700)
         self.is_hit = False
 
-    def update(self, game: 'Game') -> None:
+    def update(self, game: 'QuackHunt') -> None:
         if not self.is_hit:
             for name, data in game.events:
                 if name == 'shot_fired':
                     if circle_collision(data.position, self.position, self.radius):
-                        game.engine.queue_event('duck_hit')
+                        game.engine.queue_event('duck_hit', position=self.position.copy())
                         self.is_hit = True
 
-        self.position += self.movement * game.dt
+        if self.is_hit:
+            self.position += self.fall_movement * game.dt
+        else:
+            self.position += self.movement * game.dt
 
         if self.position.y < -100:
             self.position = Vec2(700, 700)
             self.is_hit = False
+
+        if self.is_hit and self.position.y > RENDER_HEIGHT - 100:
+            self.remove()
 
     def draw(self, surface: pyg.Surface, offset: Vec2) -> None:
         color = 0xFF0000 if self.is_hit else 0x00FF00
@@ -131,8 +156,8 @@ class DrumNode(SpriteNode):
         self.add_child(*self.round_nodes)
 
     def update(self, game: 'QuackHunt') -> None:
-        for i in range(6 - game.rounds_left):
-            self.round_nodes[i].visible = False
+        for i in range(6):
+            self.round_nodes[i].visible = 6 - game.rounds_left <= i
 
 
 class UINode(Node):
@@ -150,9 +175,15 @@ class UINode(Node):
 
 
 class GameLogicNode(Node):
-    def pull_trigger(self, game: 'QuackHunt') -> None:
+    def reload(self, game: 'QuackHunt') -> None:
+        game.rounds_left = 6
+
+    def trigger_pulled(self, game: 'QuackHunt') -> None:
         if game.rounds_left == 0:
             return
+
+        if game.rounds_left == 1 and not game.is_reloading:
+            game.engine.queue_timer_event(1, self.reload, game=game)
 
         game.rounds_left -= 1
         game.engine.queue_event('shot_fired', position=game.aim_position)
@@ -163,7 +194,7 @@ class GameLogicNode(Node):
     def update(self, game: 'QuackHunt') -> None:
         for e in game.native_events:
             if e.type == pyg.MOUSEBUTTONDOWN and e.button == 1:
-                self.pull_trigger(game)
+                self.trigger_pulled(game)
                 break
 
         for name, data in game.events:
@@ -197,6 +228,7 @@ class QuackHunt(Game):
     detection_thread: Thread = None
     aim_position: Vec2 = RENDER_ORIGIN
     rounds_left: int = 6
+    is_reloading: bool = False
     score: int = 0
 
     def __init__(self):
@@ -224,20 +256,21 @@ class QuackHunt(Game):
             BackgroundNode(),
             DuckNode(),
             ForegroundNode(),
+            HitNode(),
             UINode(),
             CrosshairNode(),
         )
 
-        self.detection_thread = Thread(
-            target=detection_runner,
-            daemon=True,
-            args=[self],
-        )
+        # self.detection_thread = Thread(
+        #     target=detection_runner,
+        #     daemon=True,
+        #     args=[self],
+        # )
+        #
+        # self.detection_thread.start()
 
-        self.detection_thread.start()
-
-    def on_stopped(self) -> None:
-        self.detection_thread.join()
+    # def on_stopped(self) -> None:
+    #     self.detection_thread.join()
 
     def on_frame_start(self) -> None:
         self.engine.set_title(str(round(self.engine.clock.get_fps())))
