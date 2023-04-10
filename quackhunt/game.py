@@ -210,8 +210,8 @@ class DrumNode(SpriteNode):
         for i in range(6):
             self.round_nodes.append(SpriteNode(
                 filename='./assets/gfx/round.png',
-                position=Vec2(math.cos(math.tau / 6 * (i - 1) - (math.pi / 6)) * 75,
-                              math.sin(math.tau / 6 * (i - 1) - (math.pi / 6)) * 75),
+                position=Vec2(math.cos(math.tau / 6 * (i - 1) - (math.pi / 6)) * 65,
+                              math.sin(math.tau / 6 * (i - 1) - (math.pi / 6)) * 65),
             ))
 
         self.add_child(*self.round_nodes)
