@@ -44,6 +44,10 @@ def rand_choice(choices: List):
     return random.choice(choices)
 
 
+def lerp(a: float, b: float, t: float) -> float:
+    return a + (b - a) * t
+
+
 def circle_collision(point: Vec2, position: Vec2, radius: float) -> bool:
     return point.distance_squared_to(position) < radius * radius
 
@@ -154,10 +158,10 @@ class DuckNode(Node):
 
         if rand_bool():
             spawn_x = rand_float(0, RENDER_WIDTH / 2)
-            self.movement = Vec2(rand_float(200, 400), -rand_float(200,600))
+            self.movement = Vec2(rand_float(200, 400), -rand_float(200, 600))
         else:
             spawn_x = rand_float(RENDER_WIDTH / 2, RENDER_WIDTH)
-            self.movement = Vec2(-rand_float(200, 400), -rand_float(200,600))
+            self.movement = Vec2(-rand_float(200, 400), -rand_float(200, 600))
 
         self.position = Vec2(spawn_x, spawn_y)
 
@@ -204,6 +208,8 @@ class DrumNode(SpriteNode):
 
     def __init__(self):
         super().__init__(filename='./assets/gfx/drum.png')
+
+        self.impulse = 0.0
         self.position = Vec2(self.size.x / 2 + 20, RENDER_HEIGHT - self.size.y / 2 - 20)
         self.round_nodes = []
 
@@ -217,8 +223,19 @@ class DrumNode(SpriteNode):
         self.add_child(*self.round_nodes)
 
     def update(self, game: 'QuackHunt') -> None:
+        for name, data in game.events:
+            if name == 'shot_fired':
+                self.impulse = 30
+                break
+
         for i in range(6):
             self.round_nodes[i].visible = 6 - game.rounds_left <= i
+
+        self.impulse = max(self.impulse - 100 * game.dt, 0)
+
+    def draw(self, surface: pyg.Surface, offset: Vec2) -> None:
+        offset = Vec2(offset.x + rand_float(-1, 1) * self.impulse, offset.y + rand_float(-1, 1) * self.impulse)
+        surface.blit(self.texture, self.get_adjusted_rect(offset))
 
 
 class UINode(Node):
