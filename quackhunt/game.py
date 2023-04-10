@@ -117,9 +117,11 @@ class DuckNode(Node):
 
         self.radius = 80
         self.movement = Vec2(-200, -400)
-        self.fall_movement = Vec2(0, 200)
+        self.fall_movement = Vec2(0, 300)
         self.position = Vec2(700, 700)
         self.is_hit = False
+
+        self.falling_sound_node = SoundNode(filename='./assets/sfx/duck_falling.wav')
 
         self.animation_left_textures = [
             load_texture('./assets/gfx/duck_left_1.png'),
@@ -131,17 +133,23 @@ class DuckNode(Node):
             load_texture('./assets/gfx/duck_right_2.png'),
         ]
 
-        self.size=Vec2(self.animation_left_textures[0].get_size())
-        self.current_frame = None
+        self.animation_dead_textures = [
+            load_texture('./assets/gfx/duck_dead_left.png'),
+            load_texture('./assets/gfx/duck_dead_right.png'),
+        ]
 
+        self.size = Vec2(self.animation_left_textures[0].get_size())
+        self.current_frame = None
 
     def next_frame(self, game: 'QuackHunt'):
         frame_index = int(game.engine.get_time() * 5) % len(self.animation_left_textures)
 
-        direction_textures = self.animation_left_textures if self.movement.x < 0 \
-            else self.animation_right_textures
-
-        self.current_frame = direction_textures[frame_index]
+        if self.is_hit:
+            self.current_frame = self.animation_dead_textures[frame_index]
+        elif self.movement.x < 0:
+            self.current_frame = self.animation_left_textures[frame_index]
+        else:
+            self.current_frame = self.animation_right_textures[frame_index]
 
     def update(self, game: 'QuackHunt') -> None:
         if not self.is_hit:
@@ -150,6 +158,7 @@ class DuckNode(Node):
                     if circle_collision(data.position, self.position, self.radius):
                         game.engine.queue_event('duck_hit', position=self.position.copy())
                         self.is_hit = True
+                        self.falling_sound_node.play()
 
         self.next_frame(game)
 
