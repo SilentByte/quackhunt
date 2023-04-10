@@ -176,11 +176,13 @@ class DuckNode(Node):
             self.current_frame = self.animation_right_textures[frame_index]
 
     def update(self, game: 'QuackHunt') -> None:
-        if not self.is_hit:
+        if not self.is_hit and not game.is_duck_hit:
             for name, data in game.events:
                 if name == 'shot_fired':
                     if circle_collision(data.position, self.position, self.radius):
+                        game.is_duck_hit = True
                         game.engine.queue_event('duck_hit', position=self.position.copy())
+
                         self.is_hit = True
                         self.falling_sound_node.play()
 
@@ -249,7 +251,7 @@ class UINode(Node):
         )
 
     def update(self, game: 'QuackHunt') -> None:
-        self.score_node.text = str(game.score).ljust(4, '0')
+        self.score_node.text = str(game.score).rjust(4, '0')
 
 
 class GameLogicNode(Node):
@@ -288,9 +290,11 @@ class GameLogicNode(Node):
             game.engine.queue_timer_event(0.6, self.cock, game=game)
 
     def duck_hit(self, game: 'QuackHunt') -> None:
-        game.score += 1000
+        game.score += 50
 
     def update(self, game: 'QuackHunt') -> None:
+        game.is_duck_hit = False
+
         for e in game.native_events:
             if e.type == pyg.MOUSEBUTTONDOWN and e.button == 1:
                 self.trigger_pulled(game)
@@ -328,6 +332,7 @@ class QuackHunt(Game):
     aim_position: Vec2 = RENDER_ORIGIN
     rounds_left: int = 6
     can_fire: bool = True
+    is_duck_hit: bool = False
     score: int = 0
 
     def __init__(self):
@@ -336,10 +341,10 @@ class QuackHunt(Game):
     def get_config(self) -> EngineConfig:
         return EngineConfig(
             title='Quack Hunt',
-            width=RENDER_WIDTH,
-            height=RENDER_HEIGHT,
+            width=int(RENDER_WIDTH),
+            height=int(RENDER_HEIGHT),
             target_fps=60,
-            show_cursor=True,
+            show_cursor=False,
         )
 
     def update_detection(self, detection_result: DetectionResult) -> None:
@@ -380,7 +385,8 @@ class QuackHunt(Game):
     #     self.detection_thread.join()
 
     def on_frame_start(self) -> None:
-        self.engine.set_title(str(round(self.engine.clock.get_fps())))
+        fps = round(self.engine.clock.get_fps())
+        self.engine.set_title(f'Quack Hunt ({fps})')
 
 
 def run():
