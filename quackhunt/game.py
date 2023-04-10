@@ -6,7 +6,7 @@
 import math
 import random
 from threading import Thread
-from typing import List
+from typing import List, Iterable
 
 from quackhunt import config
 from quackhunt.detector import (
@@ -26,14 +26,22 @@ from quackhunt.engine import (
     load_texture,
 )
 
-RENDER_WIDTH = 1920
-RENDER_HEIGHT = 1080
+RENDER_WIDTH = 1920.0
+RENDER_HEIGHT = 1080.0
 
 RENDER_ORIGIN = Vec2(RENDER_WIDTH, RENDER_HEIGHT) / 2
 
 
-def rand() -> float:
-    return random.random()
+def rand_float(start: float = 0, end: float = 1.0) -> float:
+    return start + (random.random() * (end - start))
+
+
+def rand_bool() -> bool:
+    return rand_float() > 0.5
+
+
+def rand_choice(choices: List):
+    return random.choice(choices)
 
 
 def circle_collision(point: Vec2, position: Vec2, radius: float) -> bool:
@@ -116,10 +124,7 @@ class DuckNode(Node):
         super().__init__()
 
         self.radius = 80
-        self.movement = Vec2(-200, -400)
-        self.fall_movement = Vec2(0, 300)
-        self.position = Vec2(700, 700)
-        self.is_hit = False
+        self.reset()
 
         self.falling_sound_node = SoundNode(filename='./assets/sfx/duck_falling.wav')
 
@@ -140,6 +145,21 @@ class DuckNode(Node):
 
         self.size = Vec2(self.animation_left_textures[0].get_size())
         self.current_frame = None
+
+    def reset(self):
+        self.is_hit = False
+        self.fall_movement = Vec2(0, rand_choice([200, 300, 400]))
+
+        spawn_y = rand_float(700, 900)
+
+        if rand_bool():
+            spawn_x = rand_float(0, RENDER_WIDTH / 2)
+            self.movement = Vec2(rand_float(200, 400), -rand_float(200,600))
+        else:
+            spawn_x = rand_float(RENDER_WIDTH / 2, RENDER_WIDTH)
+            self.movement = Vec2(-rand_float(200, 400), -rand_float(200,600))
+
+        self.position = Vec2(spawn_x, spawn_y)
 
     def next_frame(self, game: 'QuackHunt'):
         frame_index = int(game.engine.get_time() * 5) % len(self.animation_left_textures)
@@ -168,8 +188,7 @@ class DuckNode(Node):
             self.position += self.movement * game.dt
 
         if self.position.y < -100:
-            self.position = Vec2(700, 700)
-            self.is_hit = False
+            self.reset()
 
         if self.is_hit and self.position.y > RENDER_HEIGHT - 100:
             self.remove()
@@ -318,6 +337,13 @@ class QuackHunt(Game):
             GameLogicNode(),
             SkyNode(),
             BackgroundNode(),
+            DuckNode(),
+            DuckNode(),
+            DuckNode(),
+            DuckNode(),
+            DuckNode(),
+            DuckNode(),
+            DuckNode(),
             DuckNode(),
             ForegroundNode(),
             HitNode(),
