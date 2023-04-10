@@ -6,7 +6,7 @@
 import math
 import random
 from threading import Thread
-from typing import List, Iterable
+from typing import List
 
 from quackhunt import config
 from quackhunt.detector import (
@@ -50,6 +50,11 @@ def lerp(a: float, b: float, t: float) -> float:
 
 def circle_collision(point: Vec2, position: Vec2, radius: float) -> bool:
     return point.distance_squared_to(position) < radius * radius
+
+
+def format_time(seconds: float) -> str:
+    minutes, seconds = divmod(seconds, 60)
+    return f'{minutes:0>2.0f}:{seconds:0>2.0f}'
 
 
 class SkyNode(SpriteNode):
@@ -200,8 +205,8 @@ class DuckNode(Node):
             self.remove()
 
     def draw(self, surface: pyg.Surface, offset: Vec2) -> None:
-        color = 0xFF0000 if self.is_hit else 0x00FF00
-        pyg.draw.circle(surface, color, self.position, self.radius, width=8)
+        # color = 0xFF0000 if self.is_hit else 0x00FF00
+        # pyg.draw.circle(surface, color, self.position, self.radius, width=8)
         surface.blit(self.current_frame, self.get_adjusted_rect(offset))
 
 
@@ -240,18 +245,51 @@ class DrumNode(SpriteNode):
         surface.blit(self.texture, self.get_adjusted_rect(offset))
 
 
+class DigitNode(SpriteNode):
+    GLPYPHS = {
+        ' ': 0,
+        '0': 1,
+        '1': 2,
+        '2': 3,
+        '3': 4,
+        '4': 5,
+        '5': 6,
+        '6': 7,
+        '7': 8,
+        '8': 9,
+        '9': 10,
+        ':': 11,
+    }
+
+    text: str = ''
+
+    def __init__(self, position: Vec2):
+        super().__init__(filename='./assets/gfx/digits.png',
+                         position=position)
+
+    def draw(self, surface: pyg.Surface, offset: Vec2) -> None:
+        text_offset = Vec2()
+        for c in self.text:
+            digit_x = DigitNode.GLPYPHS.get(c, 0) * self.size.y
+            text_offset.x += self.size.y
+            surface.blit(self.texture, offset + self.position + text_offset, (digit_x, 0, self.size.y, self.size.y))
+
+
 class UINode(Node):
     def __init__(self):
         super().__init__()
 
-        self.score_node = TextNode(None, 200, position=Vec2(RENDER_WIDTH - 400, RENDER_HEIGHT - 200))
+        self.time_node = DigitNode(position=Vec2(RENDER_WIDTH - 640, RENDER_HEIGHT - 250))
+        self.score_node = DigitNode(position=Vec2(RENDER_WIDTH - 640, RENDER_HEIGHT - 130))
         self.add_child(
             DrumNode(),
+            self.time_node,
             self.score_node,
         )
 
     def update(self, game: 'QuackHunt') -> None:
-        self.score_node.text = str(game.score).rjust(4, '0')
+        self.time_node.text = format_time(game.engine.get_time())
+        self.score_node.text = str(game.score).rjust(5, '0')
 
 
 class GameLogicNode(Node):
@@ -290,7 +328,7 @@ class GameLogicNode(Node):
             game.engine.queue_timer_event(0.6, self.cock, game=game)
 
     def duck_hit(self, game: 'QuackHunt') -> None:
-        game.score += 50
+        game.score += 120
 
     def update(self, game: 'QuackHunt') -> None:
         game.is_duck_hit = False
