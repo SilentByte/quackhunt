@@ -23,10 +23,12 @@ from quackhunt.engine import (
     SoundNode,
     Vec2,
     run_game,
+    load_texture,
 )
 
 RENDER_WIDTH = 1920
 RENDER_HEIGHT = 1080
+
 RENDER_ORIGIN = Vec2(RENDER_WIDTH, RENDER_HEIGHT) / 2
 
 
@@ -36,6 +38,21 @@ def rand() -> float:
 
 def circle_collision(point: Vec2, position: Vec2, radius: float) -> bool:
     return point.distance_squared_to(position) < radius * radius
+
+
+class SkyNode(SpriteNode):
+    def __init__(self):
+        super().__init__(filename='./assets/gfx/sky.png')
+
+    def update(self, game: 'Game') -> None:
+        self.position.x += 20 * game.dt
+
+    def draw(self, surface: pyg.Surface, offset: Vec2) -> None:
+        if self.position.x > RENDER_WIDTH:
+            self.position.x -= 2 * RENDER_WIDTH
+
+        surface.blit(self.texture, self.position)
+        surface.blit(self.texture, Vec2(self.position.x - 2 * RENDER_WIDTH, self.position.y))
 
 
 class BackgroundNode(SpriteNode):
@@ -55,17 +72,12 @@ class ForegroundNode(SpriteNode):
 
 
 class CrosshairNode(SpriteNode):
-    fire_sound_node: SoundNode
-
     def __init__(self):
         super().__init__(
             name='crosshair',
             filename='./assets/gfx/crosshair.png',
             position=RENDER_ORIGIN,
         )
-
-        self.fire_sound_node = SoundNode(filename='./assets/sfx/fire.wav')
-        self.add_child(self.fire_sound_node)
 
     def update(self, game: 'QuackHunt') -> None:
         self.position = game.aim_position
@@ -76,13 +88,9 @@ class CrosshairNode(SpriteNode):
                 game.aim_position = self.position
                 break
 
-        for name, data in game.events:
-            if name == 'shot_fired':
-                self.fire_sound_node.play()
-
 
 class HitNode(Node):
-    def remove(self, child: Node):
+    def remove_tag(self, child: Node):
         self.remove_child(child)
         pass
 
@@ -91,7 +99,7 @@ class HitNode(Node):
             if name == 'duck_hit':
                 child = SpriteNode(filename='./assets/gfx/hit.png', position=data.position)
                 self.add_child(child)
-                game.engine.queue_timer_event(1, self.remove, child=child)
+                game.engine.queue_timer_event(1, self.remove_tag, child=child)
                 break
 
         for child in self.children:
@@ -108,10 +116,32 @@ class DuckNode(Node):
         super().__init__()
 
         self.radius = 80
-        self.movement = Vec2(100, -400)
+        self.movement = Vec2(-200, -400)
         self.fall_movement = Vec2(0, 200)
         self.position = Vec2(700, 700)
         self.is_hit = False
+
+        self.animation_left_textures = [
+            load_texture('./assets/gfx/duck_left_1.png'),
+            load_texture('./assets/gfx/duck_left_2.png'),
+        ]
+
+        self.animation_right_textures = [
+            load_texture('./assets/gfx/duck_right_1.png'),
+            load_texture('./assets/gfx/duck_right_2.png'),
+        ]
+
+        self.size=Vec2(self.animation_left_textures[0].get_size())
+        self.current_frame = None
+
+
+    def next_frame(self, game: 'QuackHunt'):
+        frame_index = int(game.engine.get_time() * 5) % len(self.animation_left_textures)
+
+        direction_textures = self.animation_left_textures if self.movement.x < 0 \
+            else self.animation_right_textures
+
+        self.current_frame = direction_textures[frame_index]
 
     def update(self, game: 'QuackHunt') -> None:
         if not self.is_hit:
@@ -120,6 +150,8 @@ class DuckNode(Node):
                     if circle_collision(data.position, self.position, self.radius):
                         game.engine.queue_event('duck_hit', position=self.position.copy())
                         self.is_hit = True
+
+        self.next_frame(game)
 
         if self.is_hit:
             self.position += self.fall_movement * game.dt
@@ -136,6 +168,7 @@ class DuckNode(Node):
     def draw(self, surface: pyg.Surface, offset: Vec2) -> None:
         color = 0xFF0000 if self.is_hit else 0x00FF00
         pyg.draw.circle(surface, color, self.position, self.radius, width=8)
+        surface.blit(self.current_frame, self.get_adjusted_rect(offset))
 
 
 class DrumNode(SpriteNode):
@@ -175,18 +208,39 @@ class UINode(Node):
 
 
 class GameLogicNode(Node):
+    fire_sound_node: SoundNode
+    cock_sound_node: SoundNode
+    reload_sound_node: SoundNode
+
+    def __init__(self):
+        super().__init__()
+        self.fire_sound_node = SoundNode(filename='./assets/sfx/fire.wav')
+        self.cock_sound_node = SoundNode(filename='./assets/sfx/cock.wav')
+        self.reload_sound_node = SoundNode(filename='./assets/sfx/reload.wav')
+
     def reload(self, game: 'QuackHunt') -> None:
         game.rounds_left = 6
+        game.can_fire = True
+        self.reload_sound_node.play()
+
+    def cock(self, game: 'QuackHunt') -> None:
+        game.can_fire = True
+        self.cock_sound_node.play()
 
     def trigger_pulled(self, game: 'QuackHunt') -> None:
-        if game.rounds_left == 0:
+        if not game.can_fire or game.rounds_left == 0:
             return
 
-        if game.rounds_left == 1 and not game.is_reloading:
+        if game.rounds_left == 1:
             game.engine.queue_timer_event(1, self.reload, game=game)
 
         game.rounds_left -= 1
+        game.can_fire = False
         game.engine.queue_event('shot_fired', position=game.aim_position)
+        self.fire_sound_node.play()
+
+        if game.rounds_left > 0:
+            game.engine.queue_timer_event(0.6, self.cock, game=game)
 
     def duck_hit(self, game: 'QuackHunt') -> None:
         game.score += 1000
@@ -228,7 +282,7 @@ class QuackHunt(Game):
     detection_thread: Thread = None
     aim_position: Vec2 = RENDER_ORIGIN
     rounds_left: int = 6
-    is_reloading: bool = False
+    can_fire: bool = True
     score: int = 0
 
     def __init__(self):
@@ -253,6 +307,7 @@ class QuackHunt(Game):
     def on_started(self) -> None:
         self.scene_graph.add_child(
             GameLogicNode(),
+            SkyNode(),
             BackgroundNode(),
             DuckNode(),
             ForegroundNode(),

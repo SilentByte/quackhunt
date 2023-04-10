@@ -51,13 +51,13 @@ class Node:
     size: Vec2
     visible: bool
 
-    def __init__(self, name: str = '', position: Vec2 = Vec2(), size: Vec2 = Vec2()):
+    def __init__(self, name: str = '', position: Vec2 = None, size: Vec2 = None):
         self.id = _global_id()
         self.name = name or self._generate_name()
         self.parent = None
         self.children = []
-        self.position = position
-        self.size = size
+        self.position = position or Vec2()
+        self.size = size or Vec2()
         self.visible = True
 
     def _generate_name(self) -> str:
@@ -136,7 +136,7 @@ class SpriteNode(Node):
             name: str = '',
             position: Vec2 = Vec2(),
     ):
-        self.texture = pyg.image.load(filename).convert_alpha()
+        self.texture = load_texture(filename)
         super().__init__(name, position, Vec2(self.texture.get_width(), self.texture.get_height()))
 
     def draw(self, surface: pyg.Surface, offset: Vec2) -> None:
@@ -218,6 +218,20 @@ class SceneGraph:
 
 EventQueue = List[tuple[str, Any]]
 TimerQueue = List[tuple[float, callable, dict]]
+
+TEXTURE_CACHE: dict[str, pyg.Surface] = {}
+
+
+def load_texture(filename: str) -> pyg.Surface:
+    surface = TEXTURE_CACHE.get(filename, None)
+
+    if surface is not None:
+        return surface
+
+    surface = pyg.image.load(filename).convert_alpha()
+    TEXTURE_CACHE[filename] = surface
+
+    return surface
 
 
 # noinspection PyMethodMayBeStatic
