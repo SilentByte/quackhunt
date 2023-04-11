@@ -176,7 +176,7 @@ class SoundNode(Node):
             filename: str,
             name: str = '',
     ):
-        self.sound = pyg.mixer.Sound(filename)
+        self.sound = load_sound(filename)
         super().__init__(name)
 
     def play(self) -> None:
@@ -220,6 +220,7 @@ EventQueue = List[tuple[str, Any]]
 TimerQueue = List[tuple[float, callable, dict]]
 
 TEXTURE_CACHE: dict[str, pyg.Surface] = {}
+SOUND_CACHE: dict[str, pyg.mixer.Sound] = {}
 
 
 def load_texture(filename: str) -> pyg.Surface:
@@ -232,6 +233,18 @@ def load_texture(filename: str) -> pyg.Surface:
     TEXTURE_CACHE[filename] = surface
 
     return surface
+
+
+def load_sound(filename: str) -> pyg.mixer.Sound:
+    sound = SOUND_CACHE.get(filename, None)
+
+    if sound is not None:
+        return sound
+
+    sound = pyg.mixer.Sound(filename)
+    SOUND_CACHE[filename] = sound
+
+    return sound
 
 
 # noinspection PyMethodMayBeStatic

@@ -128,14 +128,21 @@ class DuckNode(Node):
     movement: Vec2
     fall_movement: Vec2
     is_hit: bool
+    quack_sound_node: SoundNode
 
     def __init__(self):
         super().__init__()
 
         self.radius = 80
-        self.reset()
 
         self.falling_sound_node = SoundNode(filename='./assets/sfx/duck_falling.wav')
+        self.quack_sound_node = SoundNode(filename=rand_choice([
+            './assets/sfx/quack_1.wav',
+            './assets/sfx/quack_2.wav',
+            './assets/sfx/quack_3.wav',
+        ]))
+
+        self.reset()
 
         self.animation_left_textures = [
             load_texture('./assets/gfx/duck_left_1.png'),
@@ -163,12 +170,13 @@ class DuckNode(Node):
 
         if rand_bool():
             spawn_x = rand_float(0, RENDER_WIDTH / 2)
-            self.movement = Vec2(rand_float(200, 400), -rand_float(200, 600))
+            self.movement = Vec2(rand_float(100, 600), -rand_float(300, 600))
         else:
             spawn_x = rand_float(RENDER_WIDTH / 2, RENDER_WIDTH)
-            self.movement = Vec2(-rand_float(200, 400), -rand_float(200, 600))
+            self.movement = Vec2(-rand_float(100, 600), -rand_float(300, 600))
 
         self.position = Vec2(spawn_x, spawn_y)
+        self.quack_sound_node.play()
 
     def next_frame(self, game: 'QuackHunt'):
         frame_index = int(game.engine.get_time() * 5) % len(self.animation_left_textures)
@@ -397,6 +405,14 @@ class QuackHunt(Game):
             GameLogicNode(),
             SkyNode(),
             BackgroundNode(),
+            DuckNode(),
+            DuckNode(),
+            DuckNode(),
+            DuckNode(),
+            DuckNode(),
+            DuckNode(),
+            DuckNode(),
+            DuckNode(),
             DuckNode(),
             DuckNode(),
             DuckNode(),
