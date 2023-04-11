@@ -19,7 +19,6 @@ from quackhunt.engine import (
     EngineConfig,
     Node,
     SpriteNode,
-    TextNode,
     SoundNode,
     Vec2,
     run_game,
@@ -213,6 +212,9 @@ class DuckNode(Node):
             self.remove()
 
     def draw(self, surface: pyg.Surface, offset: Vec2) -> None:
+        if self.current_frame is None:
+            return
+
         # color = 0xFF0000 if self.is_hit else 0x00FF00
         # pyg.draw.circle(surface, color, self.position, self.radius, width=8)
         surface.blit(self.current_frame, self.get_adjusted_rect(offset))
@@ -305,11 +307,19 @@ class GameLogicNode(Node):
     cock_sound_node: SoundNode
     reload_sound_node: SoundNode
 
+    duck_parent_node: Node
+    is_hunting: bool
+
     def __init__(self):
         super().__init__()
         self.fire_sound_node = SoundNode(filename='./assets/sfx/fire.wav')
         self.cock_sound_node = SoundNode(filename='./assets/sfx/cock.wav')
         self.reload_sound_node = SoundNode(filename='./assets/sfx/reload.wav')
+
+        self.duck_parent_node = Node()
+        self.add_child(self.duck_parent_node)
+
+        self.is_hunting = False
 
     def reload(self, game: 'QuackHunt') -> None:
         game.rounds_left = 6
@@ -338,6 +348,19 @@ class GameLogicNode(Node):
     def duck_hit(self, game: 'QuackHunt') -> None:
         game.score += 120
 
+    def spawn_ducks(self, game: 'QuackHunt') -> None:
+        if self.is_hunting:
+            game.engine.queue_timer_event(1.0, self.spawn_ducks, game=game)
+
+        if len(self.duck_parent_node.children) > 5:
+            return
+
+        self.duck_parent_node.add_child(DuckNode())
+
+    def despawn_ducks(self) -> None:
+        for d in self.duck_parent_node.children:
+            d.remove()
+
     def update(self, game: 'QuackHunt') -> None:
         game.is_duck_hit = False
 
@@ -349,6 +372,14 @@ class GameLogicNode(Node):
         for name, data in game.events:
             if name == 'duck_hit':
                 self.duck_hit(game)
+
+            if name == 'hunt_started':
+                self.is_hunting = True
+                self.spawn_ducks(game)
+
+            if name == 'hunt_ended':
+                self.is_hunting = False
+                self.despawn_ducks()
 
 
 def detection_runner(game: 'QuackHunt'):
@@ -402,30 +433,16 @@ class QuackHunt(Game):
 
     def on_started(self) -> None:
         self.scene_graph.add_child(
-            GameLogicNode(),
             SkyNode(),
             BackgroundNode(),
-            DuckNode(),
-            DuckNode(),
-            DuckNode(),
-            DuckNode(),
-            DuckNode(),
-            DuckNode(),
-            DuckNode(),
-            DuckNode(),
-            DuckNode(),
-            DuckNode(),
-            DuckNode(),
-            DuckNode(),
-            DuckNode(),
-            DuckNode(),
-            DuckNode(),
-            DuckNode(),
+            GameLogicNode(),
             ForegroundNode(),
             HitNode(),
             UINode(),
             CrosshairNode(),
         )
+
+        self.engine.queue_event('hunt_started')
 
         # self.detection_thread = Thread(
         #     target=detection_runner,
