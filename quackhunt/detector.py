@@ -3,7 +3,7 @@
 # Copyright (c) 2023 SilentByte <https://silentbyte.com/>
 #
 
-
+import threading
 from dataclasses import dataclass
 
 import cv2
@@ -44,7 +44,14 @@ class Detector:
             stretch_factors: Point = (1.0, 1.0),
             nudge_addends: Point = (0.0, 0.0),
     ):
+        self.is_destroyed = False
         self.video_capture = cv2.VideoCapture(video_capture_index)
+        self.current_frame = None
+
+        self.capture_thread = threading.Thread(target=self._threaded_frame_reader)
+        self.capture_thread.daemon = True
+        self.capture_thread.start()
+
         self.flip_vertically = flip_vertically
         self.flip_horizontally = flip_horizontally
         self.show_debug_windows = show_debug_windows
@@ -59,6 +66,13 @@ class Detector:
 
         self.stretch_factors = stretch_factors
         self.nudge_addends = nudge_addends
+
+    def _threaded_frame_reader(self):
+        while not self.is_destroyed:
+            result, frame = self.video_capture.read()
+
+            if result:
+                self.current_frame = frame
 
     @staticmethod
     def _detect(mask, frame_size: Size, min_confidence: float):
@@ -140,12 +154,16 @@ class Detector:
         )
 
     def process_frame(self) -> DetectionResult:
+        if self.is_destroyed:
+            raise DetectorException('Detector has already been destroyed')
+
         if self.video_capture is None:
             raise DetectorException('Video capture is not initialized')
 
-        result, frame = self.video_capture.read()
-        if not result:
+        if self.current_frame is None:
             return DetectionResult()
+
+        frame = self.current_frame
 
         if self.flip_vertically:
             frame = cv2.flip(frame, 0)
@@ -185,6 +203,8 @@ class Detector:
         )
 
     def destroy(self) -> None:
+        self.is_destroyed = True
+
         if self.video_capture is not None:
             self.video_capture.release()
             self.video_capture = None

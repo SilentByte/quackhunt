@@ -5,8 +5,12 @@
 
 import math
 import random
+
+from collections import deque
 from threading import Thread
 from typing import List
+
+import pygame.display
 
 from quackhunt import config
 from quackhunt.detector import (
@@ -29,6 +33,7 @@ RENDER_WIDTH = 1920.0
 RENDER_HEIGHT = 1080.0
 
 RENDER_ORIGIN = Vec2(RENDER_WIDTH, RENDER_HEIGHT) / 2
+RENDER_TARGET_FPS = 60
 
 
 def rand_float(start: float = 0, end: float = 1.0) -> float:
@@ -47,8 +52,20 @@ def lerp(a: float, b: float, t: float) -> float:
     return a + (b - a) * t
 
 
+def lerp_vec2(a: Vec2, b: Vec2, t: float) -> Vec2:
+    return Vec2(lerp(a.x, b.x, t), lerp(a.y, b.y, t))
+
+
 def circle_collision(point: Vec2, position: Vec2, radius: float) -> bool:
     return point.distance_squared_to(position) < radius * radius
+
+
+def line_circle_collision(x1, y1, x2, y2, cx, cy, r):
+    point_on_line = ((cx - x1) * (x2 - x1) + (cy - y1) * (y2 - y1)) / ((y2 - y1) ** 2 + (x2 - x1) ** 2)
+    closest_x = x1 + point_on_line * (x2 - x1)
+    closest_y = y1 + point_on_line * (y2 - y1)
+
+    return 0 <= point_on_line <= 1 and math.sqrt((closest_x - cx) ** 2 + (closest_y - cy) ** 2) <= r
 
 
 def format_time(seconds: float) -> str:
@@ -96,13 +113,15 @@ class CrosshairNode(SpriteNode):
         )
 
     def update(self, game: 'QuackHunt') -> None:
-        self.position = game.aim_position
+        target_position = game.aim_position
 
         for e in game.native_events:
             if e.type == pyg.MOUSEMOTION:
-                self.position = Vec2(e.pos)
-                game.aim_position = self.position
+                target_position = Vec2(e.pos)
+                game.aim_position = target_position
                 break
+
+        self.position = lerp_vec2(self.position, target_position, 15 * game.dt)
 
 
 class HitNode(Node):
@@ -169,10 +188,10 @@ class DuckNode(Node):
 
         if rand_bool():
             spawn_x = rand_float(0, RENDER_WIDTH / 2)
-            self.movement = Vec2(rand_float(100, 600), -rand_float(300, 600))
+            self.movement = Vec2(rand_float(100, 500), -rand_float(300, 500))
         else:
             spawn_x = rand_float(RENDER_WIDTH / 2, RENDER_WIDTH)
-            self.movement = Vec2(-rand_float(100, 600), -rand_float(300, 600))
+            self.movement = Vec2(-rand_float(100, 500), -rand_float(300, 500))
 
         self.position = Vec2(spawn_x, spawn_y)
         self.quack_sound_node.play()
@@ -191,7 +210,10 @@ class DuckNode(Node):
         if not self.is_hit and not game.is_duck_hit:
             for name, data in game.events:
                 if name == 'shot_fired':
-                    if circle_collision(data.position, self.position, self.radius):
+                    if (data.mouse and circle_collision(data.position, self.position, self.radius)) \
+                            or line_circle_collision(data.position.x, data.position.y - 100, data.position.x,
+                                                     data.position.y + 300,
+                                                     self.position.x, self.position.y, self.radius):
                         game.is_duck_hit = True
                         game.engine.queue_event('duck_hit', position=self.position.copy())
 
@@ -215,8 +237,7 @@ class DuckNode(Node):
         if self.current_frame is None:
             return
 
-        # color = 0xFF0000 if self.is_hit else 0x00FF00
-        # pyg.draw.circle(surface, color, self.position, self.radius, width=8)
+        pyg.draw.circle(surface, 0x00FF00, self.position, self.radius, width=8)
         surface.blit(self.current_frame, self.get_adjusted_rect(offset))
 
 
@@ -330,7 +351,7 @@ class GameLogicNode(Node):
         game.can_fire = True
         self.cock_sound_node.play()
 
-    def trigger_pulled(self, game: 'QuackHunt') -> None:
+    def trigger_pulled(self, game: 'QuackHunt', mouse: bool) -> None:
         if not game.can_fire or game.rounds_left == 0:
             return
 
@@ -339,7 +360,8 @@ class GameLogicNode(Node):
 
         game.rounds_left -= 1
         game.can_fire = False
-        game.engine.queue_event('shot_fired', position=game.aim_position)
+        game.engine.queue_event('shot_fired', position=game.aim_position, mouse=mouse)
+
         self.fire_sound_node.play()
 
         if game.rounds_left > 0:
@@ -366,7 +388,7 @@ class GameLogicNode(Node):
 
         for e in game.native_events:
             if e.type == pyg.MOUSEBUTTONDOWN and e.button == 1:
-                self.trigger_pulled(game)
+                self.trigger_pulled(game, True)
                 break
 
         for name, data in game.events:
@@ -380,6 +402,9 @@ class GameLogicNode(Node):
             if name == 'hunt_ended':
                 self.is_hunting = False
                 self.despawn_ducks()
+
+            if name == 'trigger_pulled':
+                self.trigger_pulled(game, False)
 
 
 def detection_runner(game: 'QuackHunt'):
@@ -406,11 +431,14 @@ def detection_runner(game: 'QuackHunt'):
 
 class QuackHunt(Game):
     detection_thread: Thread = None
+    detection_result: DetectionResult = DetectionResult()
     aim_position: Vec2 = RENDER_ORIGIN
     rounds_left: int = 6
     can_fire: bool = True
     is_duck_hit: bool = False
     score: int = 0
+
+    secondary_has_gone: bool = False
 
     def __init__(self):
         self.aim_position = Vec2()
@@ -420,16 +448,25 @@ class QuackHunt(Game):
             title='Quack Hunt',
             width=int(RENDER_WIDTH),
             height=int(RENDER_HEIGHT),
-            target_fps=60,
+            target_fps=RENDER_TARGET_FPS,
             show_cursor=False,
         )
 
     def update_detection(self, detection_result: DetectionResult) -> None:
+        self.detection_result = detection_result
+
         if detection_result.primary_detection is not None:
             self.aim_position = Vec2(
                 (detection_result.primary_detection[0] / 2 + 0.5) * RENDER_WIDTH,
                 (detection_result.primary_detection[1] / 2 + 0.5) * RENDER_HEIGHT,
             )
+
+        if detection_result.secondary_detection is not None:
+            if self.secondary_has_gone and detection_result.primary_detection is not None:
+                self.secondary_has_gone = False
+                self.engine.queue_event('trigger_pulled')
+        else:
+            self.secondary_has_gone = True
 
     def on_started(self) -> None:
         self.scene_graph.add_child(
@@ -444,20 +481,27 @@ class QuackHunt(Game):
 
         self.engine.queue_event('hunt_started')
 
-        # self.detection_thread = Thread(
-        #     target=detection_runner,
-        #     daemon=True,
-        #     args=[self],
-        # )
-        #
-        # self.detection_thread.start()
+        self.detection_thread = Thread(
+            target=detection_runner,
+            daemon=True,
+            args=[self],
+        )
 
-    # def on_stopped(self) -> None:
-    #     self.detection_thread.join()
+        self.detection_thread.start()
+
+    def on_stopped(self) -> None:
+        self.detection_thread.join()
 
     def on_frame_start(self) -> None:
         fps = round(self.engine.clock.get_fps())
         self.engine.set_title(f'Quack Hunt ({fps})')
+
+    def on_frame_end(self) -> None:
+        surface = pygame.display.get_surface()
+
+        pyg.draw.circle(surface, 0x00FF00, self.aim_position, 10)
+        pyg.draw.circle(surface, 0xFF0000, Vec2(self.aim_position.x, self.aim_position.y - 100), 10)
+        pyg.draw.circle(surface, 0xFF0000, Vec2(self.aim_position.x, self.aim_position.y + 100), 10)
 
 
 def run():
