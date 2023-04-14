@@ -6,7 +6,6 @@
 import math
 import random
 
-from collections import deque
 from threading import Thread
 from typing import List
 

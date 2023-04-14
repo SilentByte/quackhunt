@@ -379,6 +379,3 @@ def calibration_tool_main():
 
 
 calibration_tool_main.is_running = False
-
-if __name__ == '__main__':
-    calibration_tool_main()
