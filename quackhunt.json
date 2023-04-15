@@ -2,7 +2,7 @@
   "video_capture_index": 0,
   "flip_vertically": false,
   "flip_horizontally": true,
-  "show_debug_windows": true,
+  "show_debug_windows": false,
   "primary_lower_threshold": [
     36,
     101,

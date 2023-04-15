@@ -55,11 +55,16 @@ def lerp_vec2(a: Vec2, b: Vec2, t: float) -> Vec2:
     return Vec2(lerp(a.x, b.x, t), lerp(a.y, b.y, t))
 
 
+def line_rect_collision(line_start: Vec2, line_end: Vec2, x: float, y: float, w: float, h: float) -> bool:
+    r = pyg.Rect(x, y, w, h)
+    return bool(r.clipline(line_start, line_end))
+
+
 def circle_collision(point: Vec2, position: Vec2, radius: float) -> bool:
     return point.distance_squared_to(position) < radius * radius
 
 
-def line_circle_collision(x1, y1, x2, y2, cx, cy, r):
+def line_circle_collision(x1: float, y1: float, x2: float, y2: float, cx: float, cy: float, r: float):
     point_on_line = ((cx - x1) * (x2 - x1) + (cy - y1) * (y2 - y1)) / ((y2 - y1) ** 2 + (x2 - x1) ** 2)
     closest_x = x1 + point_on_line * (x2 - x1)
     closest_y = y1 + point_on_line * (y2 - y1)
@@ -69,7 +74,8 @@ def line_circle_collision(x1, y1, x2, y2, cx, cy, r):
 
 def format_time(seconds: float) -> str:
     minutes, seconds = divmod(seconds, 60)
-    return f'{minutes:0>2.0f}:{seconds:0>2.0f}'
+    seconds = int(seconds)
+    return f'{minutes:0>2.0f}:{seconds:0>2}'
 
 
 class SkyNode(SpriteNode):
@@ -210,9 +216,13 @@ class DuckNode(Node):
             for name, data in game.events:
                 if name == 'shot_fired':
                     if (data.mouse and circle_collision(data.position, self.position, self.radius)) \
-                            or line_circle_collision(data.position.x, data.position.y - 100, data.position.x,
-                                                     data.position.y + 300,
-                                                     self.position.x, self.position.y, self.radius):
+                            or (not data.mouse and line_circle_collision(data.position.x,
+                                                                         data.position.y + data.y_tolerance[0],
+                                                                         data.position.x,
+                                                                         data.position.y + data.y_tolerance[1],
+                                                                         self.position.x,
+                                                                         self.position.y,
+                                                                         self.radius)):
                         game.is_duck_hit = True
                         game.engine.queue_event('duck_hit', position=self.position.copy())
 
@@ -227,7 +237,7 @@ class DuckNode(Node):
             self.position += self.movement * game.dt
 
         if self.position.y < -100:
-            self.reset()
+            self.remove()
 
         if self.is_hit and self.position.y > RENDER_HEIGHT - 100:
             self.remove()
@@ -305,6 +315,44 @@ class DigitNode(SpriteNode):
             surface.blit(self.texture, offset + self.position + text_offset, (digit_x, 0, self.size.y, self.size.y))
 
 
+class ReadyDialog(SpriteNode):
+    def __init__(self):
+        super().__init__(filename='./assets/gfx/ready.png',
+                         position=Vec2(RENDER_WIDTH / 2, RENDER_HEIGHT / 2))
+
+        self.button_position = Vec2()
+        self.button_size = Vec2()
+
+    def update(self, game: 'QuackHunt') -> None:
+        if game.state != game.STATE_READY:
+            self.visible = False
+            return
+
+        self.visible = True
+
+        self.button_position = self.position + Vec2(-300, 50)
+        self.button_size = Vec2(600, 270)
+
+        for name, data in game.events:
+            if name == 'shot_fired':
+                if line_rect_collision(Vec2(data.position.x, data.position.y + data.y_tolerance[0]),
+                                       Vec2(data.position.x, data.position.y + data.y_tolerance[1]),
+                                       self.button_position.x, self.button_position.y,
+                                       self.button_size.x, self.button_size.y):
+                    game.engine.queue_event('hunt_started')
+                    break
+
+    def draw(self, surface: pyg.Surface, offset: Vec2) -> None:
+        super().draw(surface, offset)
+
+        pyg.draw.rect(
+            surface,
+            0x00FF00,
+            pyg.Rect(self.button_position.x, self.button_position.y, self.button_size.x, self.button_size.y),
+            4,
+        )
+
+
 class UINode(Node):
     def __init__(self):
         super().__init__()
@@ -315,10 +363,13 @@ class UINode(Node):
             DrumNode(),
             self.time_node,
             self.score_node,
+            ReadyDialog(),
         )
 
     def update(self, game: 'QuackHunt') -> None:
-        self.time_node.text = format_time(game.engine.get_time())
+        self.time_node.visible = self.score_node.visible = game.state == game.STATE_HUNTING
+
+        self.time_node.text = format_time(game.hunt_end_time - game.engine.get_time())
         self.score_node.text = str(game.score).rjust(5, '0')
 
 
@@ -328,7 +379,6 @@ class GameLogicNode(Node):
     reload_sound_node: SoundNode
 
     duck_parent_node: Node
-    is_hunting: bool
 
     def __init__(self):
         super().__init__()
@@ -338,8 +388,6 @@ class GameLogicNode(Node):
 
         self.duck_parent_node = Node()
         self.add_child(self.duck_parent_node)
-
-        self.is_hunting = False
 
     def reload(self, game: 'QuackHunt') -> None:
         game.rounds_left = 6
@@ -359,7 +407,12 @@ class GameLogicNode(Node):
 
         game.rounds_left -= 1
         game.can_fire = False
-        game.engine.queue_event('shot_fired', position=game.aim_position, mouse=mouse)
+        game.engine.queue_event(
+            'shot_fired',
+            position=game.aim_position,
+            mouse=mouse,
+            y_tolerance=(0, 0) if mouse else (-100, 300),
+        )
 
         self.fire_sound_node.play()
 
@@ -370,8 +423,10 @@ class GameLogicNode(Node):
         game.score += 120
 
     def spawn_ducks(self, game: 'QuackHunt') -> None:
-        if self.is_hunting:
-            game.engine.queue_timer_event(1.0, self.spawn_ducks, game=game)
+        if game.state != game.STATE_HUNTING:
+            return
+
+        game.engine.queue_timer_event(rand_choice([0.75, 1.00, 1.50]), self.spawn_ducks, game=game)
 
         if len(self.duck_parent_node.children) > 5:
             return
@@ -395,15 +450,21 @@ class GameLogicNode(Node):
                 self.duck_hit(game)
 
             if name == 'hunt_started':
-                self.is_hunting = True
+                game.state = game.STATE_HUNTING
+                game.score = 0
+                game.hunt_end_time = game.engine.get_time() + 5  # 60 * 2
+                # game.rounds_left = 6 ## Do not reset rounds, it's part of the game! :D
                 self.spawn_ducks(game)
 
             if name == 'hunt_ended':
-                self.is_hunting = False
+                game.state = game.STATE_OVER
                 self.despawn_ducks()
 
             if name == 'trigger_pulled':
                 self.trigger_pulled(game, False)
+
+        if game.state == game.STATE_HUNTING and game.engine.get_time() >= game.hunt_end_time:
+            game.engine.queue_event('hunt_ended')
 
 
 def detection_runner(game: 'QuackHunt'):
@@ -436,8 +497,14 @@ class QuackHunt(Game):
     can_fire: bool = True
     is_duck_hit: bool = False
     score: int = 0
-
     secondary_has_gone: bool = False
+
+    STATE_READY = 1
+    STATE_HUNTING = 2
+    STATE_OVER = 3
+
+    state: int = STATE_READY
+    hunt_end_time: float = 0.0
 
     def __init__(self):
         self.aim_position = Vec2()
@@ -477,8 +544,6 @@ class QuackHunt(Game):
             UINode(),
             CrosshairNode(),
         )
-
-        self.engine.queue_event('hunt_started')
 
         self.detection_thread = Thread(
             target=detection_runner,
