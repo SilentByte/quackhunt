@@ -134,28 +134,26 @@ If done correctly, the green cross should now match exactly where you are pointi
 
 ## Challenges we ran into
 
-TODO. TODO. TODO. TODO. TODO. TODO. TODO. TODO.
-TODO. TODO. TODO. TODO. TODO. TODO. TODO. TODO.
-TODO. TODO. TODO. TODO. TODO. TODO. TODO. TODO.
-TODO. TODO. TODO. TODO. TODO. TODO. TODO. TODO.
+Getting the image recognition and motion tracking to work reliably was probably the most difficult aspect of this submission. Image recognition can be very finicky: initially, incorrect objects would be detected such as other parts of the body or the background. Also, even if the aim position is detected correctly, it cannot be translated into screen coordinates 1:1 without making any adjustments. This is also the main reason we created the calibration dialog with which all values can be adjusted in real-time, leading to much higher accuracy than fiddling with the raw numbers.  
+
+Another minor challenge we ran into was that PyGame is relatively low-level. We addressed this pretty early on by creating our own "game engine" on top with a simple Scene Graph that made everything a little more convenient.
+
 
 ## Accomplishments that we're proud of
 
-TODO. TODO. TODO. TODO. TODO. TODO. TODO. TODO.
-TODO. TODO. TODO. TODO. TODO. TODO. TODO. TODO.
-TODO. TODO. TODO. TODO. TODO. TODO. TODO. TODO.
-TODO. TODO. TODO. TODO. TODO. TODO. TODO. TODO.
+We are happy that we were able to make our initial idea manifest in a playable game. Also, we are happy with the hand-drawn art style we went with as we believe that it gives the game a unique touch. Everything worked out in the end. :-)
+
 
 ## What we learned
 
-TODO. TODO. TODO. TODO. TODO. TODO. TODO. TODO.
-TODO. TODO. TODO. TODO. TODO. TODO. TODO. TODO.
-TODO. TODO. TODO. TODO. TODO. TODO. TODO. TODO.
-TODO. TODO. TODO. TODO. TODO. TODO. TODO. TODO.
+As this was our first time we even considered Python for game development, it was a nice opportunity to dive into PyGame and use it to implement our idea. We were also able to gain more insight into OpenCV and real-time image recognition and motion tracking. It was fun!
+
 
 ## What's next for Quack Hunt
 
-TODO. TODO. TODO. TODO. TODO. TODO. TODO. TODO.
-TODO. TODO. TODO. TODO. TODO. TODO. TODO. TODO.
-TODO. TODO. TODO. TODO. TODO. TODO. TODO. TODO.
-TODO. TODO. TODO. TODO. TODO. TODO. TODO. TODO.
+Here is a list of our ideas:
+
+- Add more hittable objects to the game, including other types of ducks with distinct behaviors and entities in the background that occasionally pop up.
+- Add different types of stages and environments: target shooting, clay pigeon shooting, forest environment, etc.
+- Add more types of guns that require different hand motions to use.
+- Add more/better animations, particle effects, etc.
