@@ -101,6 +101,21 @@ class SkyNode(SpriteNode):
         surface.blit(self.texture, Vec2(self.position.x - 2 * RENDER_WIDTH, self.position.y))
 
 
+class BalloonNode(SpriteNode):
+    def __init__(self):
+        super().__init__(
+            filename='./assets/gfx/balloon.png',
+            position=Vec2(RENDER_WIDTH + 100, 140)
+        )
+
+    def update(self, game: 'Game') -> None:
+        self.position.x -= 30 * game.dt
+        self.position.y += math.sin(game.engine.get_time() * 2) * 20 * game.dt
+
+        if self.position.x < -100:
+            self.position.x = RENDER_WIDTH + 100
+
+
 class BackgroundNode(SpriteNode):
     def __init__(self):
         super().__init__(
@@ -500,7 +515,7 @@ class GameLogicNode(Node):
                 game.state = game.STATE_HUNTING
                 game.score = 0
                 game.hit_counter = 0
-                game.hunt_end_time = game.engine.get_time() + 5  # 60 * 2 ## TODO: CHANGE ONCE DONE.
+                game.hunt_end_time = game.engine.get_time() + 20  # 60 * 2 ## TODO: CHANGE ONCE DONE.
 
                 # Do not reset rounds, it's part of the game! :D
                 # game.rounds_left = 6
@@ -589,6 +604,7 @@ class QuackHunt(Game):
     def on_started(self) -> None:
         self.scene_graph.add_child(
             SkyNode(),
+            BalloonNode(),
             BackgroundNode(),
             GameLogicNode(),
             ForegroundNode(),
