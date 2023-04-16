@@ -271,7 +271,7 @@ class DuckNode(Node):
         if self.current_frame is None:
             return
 
-        pyg.draw.circle(surface, 0x00FF00, self.position, self.radius, width=8)
+        # pyg.draw.circle(surface, 0x00FF00, self.position, self.radius, width=8)
         surface.blit(self.current_frame, self.get_adjusted_rect(offset))
 
 
@@ -504,10 +504,7 @@ class GameLogicNode(Node):
                 game.state = game.STATE_HUNTING
                 game.score = 0
                 game.hit_counter = 0
-                game.hunt_end_time = game.engine.get_time() + 5  # 60 * 2 ## TODO: CHANGE ONCE DONE.
-
-                # Do not reset rounds, it's part of the game! :D
-                # game.rounds_left = 6
+                game.hunt_end_time = game.engine.get_time() + 60 * 2
 
                 self.spawn_ducks(game)
 
@@ -617,12 +614,12 @@ class QuackHunt(Game):
         fps = round(self.engine.clock.get_fps())
         self.engine.set_title(f'Quack Hunt ({fps})')
 
-    def on_frame_end(self) -> None:
-        surface = pygame.display.get_surface()
-
-        pyg.draw.circle(surface, 0x00FF00, self.aim_position, 10)
-        pyg.draw.circle(surface, 0xFF0000, Vec2(self.aim_position.x, self.aim_position.y - 100), 10)
-        pyg.draw.circle(surface, 0xFF0000, Vec2(self.aim_position.x, self.aim_position.y + 100), 10)
+    # def on_frame_end(self) -> None:
+    #     surface = pygame.display.get_surface()
+    #
+    #     pyg.draw.circle(surface, 0x00FF00, self.aim_position, 10)
+    #     pyg.draw.circle(surface, 0xFF0000, Vec2(self.aim_position.x, self.aim_position.y - 100), 10)
+    #     pyg.draw.circle(surface, 0xFF0000, Vec2(self.aim_position.x, self.aim_position.y + 100), 10)
 
 
 def run():
