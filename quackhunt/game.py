@@ -159,7 +159,10 @@ class HitNode(Node):
     def update(self, game: 'QuackHunt') -> None:
         for name, data in game.events:
             if name == 'duck_hit':
-                child = SpriteNode(filename='./assets/gfx/hit.png', position=data.position)
+                child = SpriteNode(
+                    filename=rand_choice(['./assets/gfx/hit.png', './assets/gfx/perfect.png']),
+                    position=data.position,
+                )
                 self.add_child(child)
                 game.engine.queue_timer_event(1, self.remove_tag, child=child)
                 break
