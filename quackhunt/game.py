@@ -581,7 +581,7 @@ class QuackHunt(Game):
             )
 
         if detection_result.secondary_detection is not None:
-            if self.secondary_has_gone and detection_result.primary_detection is not None:
+            if self.secondary_has_gone:
                 self.secondary_has_gone = False
                 self.engine.queue_event('trigger_pulled')
         else:
