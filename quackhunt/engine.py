@@ -70,11 +70,15 @@ class Node:
 
         return self
 
-    def remove_child(self, node: 'Node') -> None:
-        self.children.remove(node)
+    def remove_all_children(self) -> None:
+        for child in self.children:
+            child.parent = None
 
-    def remove(self):
-        self.parent.remove_child(self)
+        self.children.clear()
+
+    def remove(self) -> None:
+        self.parent.children.remove(self)
+        self.parent = None
 
     def find_child(self, name: str) -> Union['Node', Any]:
         def find_direct_child(node: Node, child_name: str):
@@ -210,8 +214,8 @@ class SceneGraph:
             if node.visible:
                 node.draw(surface, offset)
 
-            for child_node in node.children:
-                draw_inner(child_node, offset + node.position)
+                for child_node in node.children:
+                    draw_inner(child_node, offset + node.position)
 
         draw_inner(self.root_node, self.root_node.position)
 

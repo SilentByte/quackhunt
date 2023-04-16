@@ -78,6 +78,14 @@ def format_time(seconds: float) -> str:
     return f'{minutes:0>2.0f}:{seconds:0>2}'
 
 
+def format_score(score: int) -> str:
+    return str(score).rjust(5, '0')
+
+
+def format_hits(score: int) -> str:
+    return str(score).rjust(3, '0')
+
+
 class SkyNode(SpriteNode):
     def __init__(self):
         super().__init__(filename='./assets/gfx/sky.png')
@@ -131,8 +139,7 @@ class CrosshairNode(SpriteNode):
 
 class HitNode(Node):
     def remove_tag(self, child: Node):
-        self.remove_child(child)
-        pass
+        child.remove()
 
     def update(self, game: 'QuackHunt') -> None:
         for name, data in game.events:
@@ -317,7 +324,7 @@ class DigitNode(SpriteNode):
 
 class ReadyDialog(SpriteNode):
     def __init__(self):
-        super().__init__(filename='./assets/gfx/ready.png',
+        super().__init__(filename='./assets/gfx/ready_dialog.png',
                          position=Vec2(RENDER_WIDTH / 2, RENDER_HEIGHT / 2))
 
         self.button_position = Vec2()
@@ -353,6 +360,41 @@ class ReadyDialog(SpriteNode):
         )
 
 
+class ScoreDialog(SpriteNode):
+    def __init__(self):
+        super().__init__(filename='./assets/gfx/score_dialog.png',
+                         position=Vec2(RENDER_WIDTH / 2, RENDER_HEIGHT / 2))
+
+        self.can_continue = False
+        self.score_node = DigitNode(position=Vec2(-350, -150))
+        self.hits_node = DigitNode(position=Vec2(-250, 200))
+
+        self.add_child(
+            self.score_node,
+            self.hits_node,
+        )
+
+    def ready(self) -> None:
+        self.can_continue = True
+
+    def update(self, game: 'QuackHunt') -> None:
+        if game.state != game.STATE_OVER:
+            self.visible = False
+            return
+
+        self.visible = True
+
+        self.score_node.text = format_score(game.score)
+        self.hits_node.text = format_hits(game.hit_counter)
+
+        for name, data in game.events:
+            if name == 'hunt_ended':
+                game.engine.queue_timer_event(2.0, self.ready)
+            elif self.can_continue and name == 'shot_fired':
+                self.can_continue = False
+                game.engine.queue_event('hunt_ready')
+
+
 class UINode(Node):
     def __init__(self):
         super().__init__()
@@ -364,13 +406,14 @@ class UINode(Node):
             self.time_node,
             self.score_node,
             ReadyDialog(),
+            ScoreDialog(),
         )
 
     def update(self, game: 'QuackHunt') -> None:
         self.time_node.visible = self.score_node.visible = game.state == game.STATE_HUNTING
 
         self.time_node.text = format_time(game.hunt_end_time - game.engine.get_time())
-        self.score_node.text = str(game.score).rjust(5, '0')
+        self.score_node.text = format_score(game.score)
 
 
 class GameLogicNode(Node):
@@ -421,6 +464,7 @@ class GameLogicNode(Node):
 
     def duck_hit(self, game: 'QuackHunt') -> None:
         game.score += 120
+        game.hit_counter += 1
 
     def spawn_ducks(self, game: 'QuackHunt') -> None:
         if game.state != game.STATE_HUNTING:
@@ -434,8 +478,7 @@ class GameLogicNode(Node):
         self.duck_parent_node.add_child(DuckNode())
 
     def despawn_ducks(self) -> None:
-        for d in self.duck_parent_node.children:
-            d.remove()
+        self.duck_parent_node.remove_all_children()
 
     def update(self, game: 'QuackHunt') -> None:
         game.is_duck_hit = False
@@ -449,11 +492,19 @@ class GameLogicNode(Node):
             if name == 'duck_hit':
                 self.duck_hit(game)
 
+            if name == 'hunt_ready':
+                game.state = game.STATE_READY
+                self.reload(game)
+
             if name == 'hunt_started':
                 game.state = game.STATE_HUNTING
                 game.score = 0
-                game.hunt_end_time = game.engine.get_time() + 5  # 60 * 2
-                # game.rounds_left = 6 ## Do not reset rounds, it's part of the game! :D
+                game.hit_counter = 0
+                game.hunt_end_time = game.engine.get_time() + 5  # 60 * 2 ## TODO: CHANGE ONCE DONE.
+
+                # Do not reset rounds, it's part of the game! :D
+                # game.rounds_left = 6
+
                 self.spawn_ducks(game)
 
             if name == 'hunt_ended':
@@ -497,6 +548,7 @@ class QuackHunt(Game):
     can_fire: bool = True
     is_duck_hit: bool = False
     score: int = 0
+    hit_counter: int = 0
     secondary_has_gone: bool = False
 
     STATE_READY = 1
