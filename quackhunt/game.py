@@ -504,7 +504,7 @@ class GameLogicNode(Node):
                 game.state = game.STATE_HUNTING
                 game.score = 0
                 game.hit_counter = 0
-                game.hunt_end_time = game.engine.get_time() + 60 * 2
+                game.hunt_end_time = game.engine.get_time() + 90
 
                 self.spawn_ducks(game)
 

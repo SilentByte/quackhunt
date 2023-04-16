@@ -366,6 +366,9 @@ class _Engine:
             if event.type == pyg.KEYDOWN and event.key == pyg.K_ESCAPE:
                 return False
 
+            if event.type == pyg.KEYDOWN and event.key == pyg.K_F11:
+                pyg.display.toggle_fullscreen()
+
         return True
 
     def run(self, game: Game) -> None:
