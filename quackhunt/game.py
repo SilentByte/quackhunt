@@ -360,22 +360,8 @@ class ReadyMenu(SpriteNode):
 
         for name, data in game.events:
             if name == 'shot_fired':
-                if line_rect_collision(Vec2(data.position.x, data.position.y + data.y_tolerance[0]),
-                                       Vec2(data.position.x, data.position.y + data.y_tolerance[1]),
-                                       self.button_position.x, self.button_position.y,
-                                       self.button_size.x, self.button_size.y):
-                    game.engine.queue_event('hunt_started')
-                    break
-
-    def draw(self, surface: pyg.Surface, offset: Vec2) -> None:
-        super().draw(surface, offset)
-
-        pyg.draw.rect(
-            surface,
-            0x00FF00,
-            pyg.Rect(self.button_position.x, self.button_position.y, self.button_size.x, self.button_size.y),
-            4,
-        )
+                game.engine.queue_event('hunt_started')
+                break
 
 
 class ScoreMenu(SpriteNode):
@@ -384,8 +370,8 @@ class ScoreMenu(SpriteNode):
                          position=Vec2(RENDER_WIDTH / 2, RENDER_HEIGHT / 2))
 
         self.can_continue = False
-        self.score_node = DigitNode(position=Vec2(-350, -150))
-        self.hits_node = DigitNode(position=Vec2(-250, 200))
+        self.score_node = DigitNode(position=Vec2(-350, -120))
+        self.hits_node = DigitNode(position=Vec2(-250, 150))
 
         self.add_child(
             self.score_node,
@@ -518,7 +504,7 @@ class GameLogicNode(Node):
                 game.state = game.STATE_HUNTING
                 game.score = 0
                 game.hit_counter = 0
-                game.hunt_end_time = game.engine.get_time() + 20  # 60 * 2 ## TODO: CHANGE ONCE DONE.
+                game.hunt_end_time = game.engine.get_time() + 5  # 60 * 2 ## TODO: CHANGE ONCE DONE.
 
                 # Do not reset rounds, it's part of the game! :D
                 # game.rounds_left = 6

@@ -1,5 +1,5 @@
 
-![Quack Hunt](docs/banner.png)
+![Quack Hunt](./docs/banner.png)
 
 [![Quack Hunt](https://img.shields.io/badge/game-quack_hunt-79a558.svg?style=for-the-badge)](https://quackhunt.silentbyte.com)&nbsp;
 [![Version](https://img.shields.io/badge/version-1.0-05A5CC.svg?style=for-the-badge)](https://quackhunt.silentbyte.com)&nbsp;
