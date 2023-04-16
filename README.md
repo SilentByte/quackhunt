@@ -12,6 +12,9 @@ Quack Hunt is a fun concept for a "Duck Hunt"-like game that uses image detectio
 
 Checkout the repository, run `pip install -r requirements.txt` followed by `python main.py` to start the game. You will need a webcam. :-)
 
+[Click here to watch the submission video.](https://www.youtube.com/watch?v=Mw9rxFpf1tg)
+
+
 ![Screenshot](./docs/gameplay.png)
 
 
