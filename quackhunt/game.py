@@ -340,9 +340,9 @@ class DigitNode(SpriteNode):
             surface.blit(self.texture, offset + self.position + text_offset, (digit_x, 0, self.size.y, self.size.y))
 
 
-class ReadyDialog(SpriteNode):
+class ReadyMenu(SpriteNode):
     def __init__(self):
-        super().__init__(filename='./assets/gfx/ready_dialog.png',
+        super().__init__(filename='./assets/gfx/ready_menu.png',
                          position=Vec2(RENDER_WIDTH / 2, RENDER_HEIGHT / 2))
 
         self.button_position = Vec2()
@@ -378,9 +378,9 @@ class ReadyDialog(SpriteNode):
         )
 
 
-class ScoreDialog(SpriteNode):
+class ScoreMenu(SpriteNode):
     def __init__(self):
-        super().__init__(filename='./assets/gfx/score_dialog.png',
+        super().__init__(filename='./assets/gfx/score_menu.png',
                          position=Vec2(RENDER_WIDTH / 2, RENDER_HEIGHT / 2))
 
         self.can_continue = False
@@ -423,8 +423,8 @@ class UINode(Node):
             DrumNode(),
             self.time_node,
             self.score_node,
-            ReadyDialog(),
-            ScoreDialog(),
+            ReadyMenu(),
+            ScoreMenu(),
         )
 
     def update(self, game: 'QuackHunt') -> None:
