@@ -302,21 +302,33 @@ def calibration_tool_main():
         config.save_config(config_data)
 
     def label(text: str):
-        tk.Label(root, text=text) \
+        tk.Label(frame, text=text) \
             .pack(side=tk.TOP, padx=10, pady=10)
 
     def slider(min: int, max: int, value: int, callback: callable):
-        scale = tk.Scale(root, from_=min, to=max, orient=tk.HORIZONTAL, length=400, command=callback)
+        scale = tk.Scale(frame, from_=min, to=max, orient=tk.HORIZONTAL, length=400, command=callback)
         scale.set(value)
         scale.pack(side=tk.TOP, fill=tk.X, padx=50, pady=10)
 
     def button(text: str, callback: callable):
-        tk.Button(text=text, height=2, command=callback) \
+        tk.Button(frame, text=text, height=2, command=callback) \
             .pack(side=tk.TOP, fill=tk.X, padx=50, pady=10)
 
     root = tk.Tk()
     root.title('QuackHunt Calibration')
-    root.geometry('1200x2220')
+    root.geometry('980x2220')
+
+    canvas = tk.Canvas(root)
+    canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    scrollbar = tk.Scrollbar(root, command=canvas.yview)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    canvas.configure(yscrollcommand=scrollbar.set)
+    canvas.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+    frame = tk.Frame(canvas)
+    canvas.create_window((0, 0), window=frame, anchor='nw')
 
     calibration_tool_main.is_running = True
 
