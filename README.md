@@ -40,7 +40,7 @@ The system consists of the following three parts:
 
 ### The Game
 
-The game written in the Python programming language and uses [PyGame](https://www.pygame.org/) as the graphics back-end and for sound and input. Because PyGame is mainly intended as a thin wrapper around SDL, we have built our own little "game engine" on top of PyGame that allows us to create nodes that can be attached to our custom Scene Graph. With this system, it is much easier to add new objects with unique behaviors to the game without having to keep track of their position, logic, and rendering directly.
+The game is written in the Python programming language and uses [PyGame](https://www.pygame.org/) as the graphics back-end and for sound and input. Because PyGame is mainly intended as a thin wrapper around SDL, we have built our own little "game engine" on top of PyGame that allows us to create nodes that can be attached to our custom Scene Graph. With this system, it is much easier to add new objects with unique behaviors to the game without having to keep track of their position, logic, and rendering directly.
 
 Here is an example:
 
@@ -119,7 +119,7 @@ To aid with detection, two markers of distinct colors should be attached to the 
 | primary_min_confidence    | Used to reject detections of the primary marker that are small and likely incorrect, reducing errors.    |
 | secondary_lower_threshold | The lower threshold of the secondary marker color (bottom), specified as HSV                             |
 | secondary_upper_threshold | The upper threshold of the secondary marker color (bottom), specified as HSV                             |
-| secondary_min_confidence  | Used to reject detection of the seocndary marker that are likely incorrect, reducing errors.             |
+| secondary_min_confidence  | Used to reject detections of the secondary marker that are likely incorrect, reducing errors.            |
 | stretch_factors           | Specifies by how much the detected aim position (X/Y) should be magnified to match the physical monitor. |
 | nudge_addends             | Specifies by how much the detected aim position (X/Y) should be offset to match the physical monitor.    |
 
@@ -128,7 +128,7 @@ Run `python main.py --calibrate` to start the calibration process and follow the
 1) Adjust primary and secondary thresholds until detection is correct and reliable. Only the two markers should be detected, no other objects or the background.
 2) Position yourself centered in front of your webcam.
 3) Point at the center of the physical monitor (the real-world screen, not what the webcam shows). 
-4) Adjust the nudge addends so that green cross is matching up with the pink cross. 
+4) Adjust the nudge addends so that the green cross is matching up with the pink cross. 
 5) Point at the top edge of the physical monitor and adjust the vertical stretch factor so that the horizontal green line touches the top edge of the virtual screen. 
 6) Point at the right edge of the physical monitor and adjust the horizontal stretch factor so that the vertical green line touches the right edge of the virtual screen.
 
